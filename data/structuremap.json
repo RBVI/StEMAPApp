@@ -1,0 +1,8 @@
+{
+	"PDB": "1ID3",
+	"ChimeraCommands": "turn x 90; focus",
+	"ChainMap": {
+			"H4": "B",
+			"H3": "G"
+	}
+}
