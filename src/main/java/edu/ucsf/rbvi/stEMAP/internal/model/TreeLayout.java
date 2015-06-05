@@ -72,22 +72,22 @@ public class TreeLayout {
 		System.out.println(start.toString());
 	}
 
-	public void layout(List<String> nodeOrder, double xMax, double yMin) {
+	public void layout(List<String> nodeOrder, double xMin, double yMax) {
 		double size = 40.0;
 		double spacing= 10.0;
-		double y = yMin;
-		double xMin = xMax-getMaxDepth()*(size+spacing);
+		double yMin = yMax-getMaxDepth()*(size+spacing);
+		double x = xMin;
 
 		int lastLevel = -1;
 		for (String nodeName: nodeOrder) {
 			TreeNode tn = treeMap.get(nodeName);
 			if (tn == null) continue;
 			int level = tn.getDepth();
-			double x = xMin+level*(size+spacing);
+			double y = yMin+level*(size+spacing);
 			if (level == lastLevel) {
-				y = y-size+spacing;
+				x = x+size+spacing;
 			} else {
-				y = y-(size+spacing)/2.0;
+				x = x+(size+spacing)/2.0;
 			}
 
 			View<CyNode> nv = nodeMap.get(nodeName);

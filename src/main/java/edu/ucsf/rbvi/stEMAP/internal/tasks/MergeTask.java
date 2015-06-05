@@ -176,6 +176,8 @@ public class MergeTask extends AbstractTask {
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Copying over RIN edges");
 		progress = 0.0;
 
+		Map<CyEdge, CyEdge> edgeMap = new HashMap<>();
+
 		// Copy over all RIN edges
 		for (CyEdge edge: rinNetwork.getEdgeList()) {
 			taskMonitor.setProgress(progress/rinNetwork.getEdgeCount());
@@ -191,6 +193,7 @@ public class MergeTask extends AbstractTask {
 					CyEdge newEdge = cdtSubNetwork.addEdge(newSource, newTarget, edge.isDirected());
 					copyRow(rinNetwork.getDefaultEdgeTable(), cdtSubNetwork.getDefaultEdgeTable(),
 						      edge, newEdge, true);
+					edgeMap.put(edge, newEdge);
 				}
 			}
 			progress = progress + 1.0;
@@ -212,11 +215,20 @@ public class MergeTask extends AbstractTask {
 			String resString = rinNetwork.getRow(node).get("pdbFileName", String.class);
 			int offset = 0;
 			for (CyNode newNode: residueMap.get(resString)) {
-				rinBounds.add(copyLocation(rinNetworkView.getNodeView(node), cdtNetworkView.getNodeView(newNode), offset));
+				rinBounds.add(copyNodeStyle(rinNetworkView.getNodeView(node), cdtNetworkView.getNodeView(newNode), offset));
 				offset++;
 			}
 			progress = progress + 1.0;
 		}
+
+		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Copying edge style");
+		for (View<CyEdge> fromEv: rinNetworkView.getEdgeViews()) {
+			if (edgeMap.containsKey(fromEv.getModel())) {
+				View<CyEdge> toEv = cdtNetworkView.getEdgeView(edgeMap.get(fromEv.getModel()));
+				copyEdgeStyle(fromEv, toEv);
+			}
+		}
+
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating multi-residue edges");
 
@@ -268,7 +280,7 @@ public class MergeTask extends AbstractTask {
 		List<String> attrTree = cdtSubNetwork.getRow(cdtSubNetwork).getList("__attrClusters", String.class);
 		List<String> attrOrder = cdtSubNetwork.getRow(cdtSubNetwork).getList("__arrayOrder", String.class);
 		TreeLayout tl = new TreeLayout(cdtSubNetwork, targetNodeViews, attrTree);
-		tl.layout(attrOrder, rinBounds.getX()-200.0, rinBounds.getY()+rinBounds.getHeight()*5);
+		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-rinBounds.getHeight()-200);
 		//
 		// Finally, create a new visual style based on the RIN style
 		// createStyle(cdtNetworkView);
@@ -340,13 +352,24 @@ public class MergeTask extends AbstractTask {
 		map.get(res).add(node);
 	}
 
-	Point2D copyLocation(View<CyNode> from, View<CyNode> to, int offset) {
+	Point2D copyNodeStyle(View<CyNode> from, View<CyNode> to, int offset) {
 		double shift = 30.0*(double)offset;
 		double x = from.getVisualProperty(BasicVisualLexicon.NODE_X_LOCATION)+shift;
 		double y = from.getVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION)+shift;
 		to.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
 		to.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, y);
+		// Force the fill color
+		to.setLockedValue(BasicVisualLexicon.NODE_FILL_COLOR,
+		                  from.getVisualProperty(BasicVisualLexicon.NODE_FILL_COLOR));
 		return new Point2D.Double(x,y);
+	}
+
+	void copyEdgeStyle(View<CyEdge> from, View<CyEdge> to) {
+		to.setLockedValue(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT,
+		                  from.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT));
+		to.setLockedValue(BasicVisualLexicon.EDGE_WIDTH,
+		                  from.getVisualProperty(BasicVisualLexicon.EDGE_WIDTH));
+
 	}
 
 	class NamedNetwork {
