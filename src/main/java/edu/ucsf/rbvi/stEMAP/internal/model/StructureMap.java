@@ -16,6 +16,8 @@ import org.json.simple.parser.ParseException;
 
 public class StructureMap {
 	String pdbId = null;
+	String pdbFile = null;
+	boolean usePDBFile = false;
 	String chimeraCommands = "";
 	Map<String, String> chainMap = null;
 
@@ -30,9 +32,18 @@ public class StructureMap {
       JSONParser jsonParser = new JSONParser();
       JSONObject jsonObject = (JSONObject) jsonParser.parse(reader);
 
-      if (!jsonObject.containsKey("PDB"))
+      if (jsonObject.containsKey("PDBId"))
+				pdbId = (String)jsonObject.get("PDBId");
+      if (jsonObject.containsKey("UsePDBFile"))
+				usePDBFile = (Boolean)jsonObject.get("UsePDBFile");
+      if (jsonObject.containsKey("PDBFile"))
+				pdbFile = (String)jsonObject.get("PDBFile");
+
+			if (pdbId == null && usePDBFile == false && pdbFile == null)
         throw new RuntimeException("No pdb identifier in file");
-			pdbId = (String)jsonObject.get("PDB");
+
+			if (pdbFile != null) 
+				usePDBFile = true;
 
       if (jsonObject.containsKey("ChimeraCommands"))
 				chimeraCommands = (String)jsonObject.get("ChimeraCommands");
@@ -53,6 +64,8 @@ public class StructureMap {
 	}
 
 	public String getPDB() { return pdbId; }
+	public boolean usePDBFile() { return usePDBFile; }
+	public String getPDBFile() { return pdbFile; }
 	public String getChimeraCommands() { return chimeraCommands; }
 	public String getChain(String key) { return chainMap.get(key); }
 

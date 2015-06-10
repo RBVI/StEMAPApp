@@ -1,5 +1,7 @@
 package edu.ucsf.rbvi.stEMAP.internal.tasks;
 
+import java.awt.Color;
+import java.awt.Paint;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.geom.Point2D;
@@ -27,6 +29,13 @@ import org.cytoscape.view.model.CyNetworkViewFactory;
 import org.cytoscape.view.model.CyNetworkViewManager;
 import org.cytoscape.view.model.View;
 import org.cytoscape.view.presentation.property.BasicVisualLexicon;
+import org.cytoscape.view.vizmap.VisualMappingFunctionFactory;
+import org.cytoscape.view.vizmap.VisualMappingManager;
+import org.cytoscape.view.vizmap.VisualStyle;
+import org.cytoscape.view.vizmap.VisualStyleFactory;
+import org.cytoscape.view.vizmap.mappings.BoundaryRangeValues;
+import org.cytoscape.view.vizmap.mappings.ContinuousMapping;
+import org.cytoscape.view.vizmap.mappings.PassthroughMapping;
 import org.cytoscape.work.AbstractTask;
 import org.cytoscape.work.TaskMonitor;
 import org.cytoscape.work.Tunable;
@@ -35,6 +44,8 @@ import org.cytoscape.work.util.ListSingleSelection;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.TreeLayout;
+import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
+import edu.ucsf.rbvi.stEMAP.internal.utils.StyleHelper;
 
 public class MergeTask extends AbstractTask {
 	final StEMAPManager manager;
@@ -53,6 +64,11 @@ public class MergeTask extends AbstractTask {
 	@Tunable (description="Minimum value for negative interactions", gravity=4.0)
 	public double negativeCutoff = -2.0;
 
+	double maxWeight = 0.0;
+	double minWeight = 1000.0;
+
+	StyleHelper styleHelper = null;
+
 	public MergeTask(final StEMAPManager manager) {
 		this.manager = manager;
 		CyNetworkManager netManager = manager.getService(CyNetworkManager.class);
@@ -69,9 +85,18 @@ public class MergeTask extends AbstractTask {
 		if (rinNamedNetwork != null)
 			rin.setSelectedValue(rinNamedNetwork);
 		cdt = new ListSingleSelection<NamedNetwork>(netList);
+
+		styleHelper = new StyleHelper(manager);
 	}
 
 	public void run(TaskMonitor taskMonitor) {
+		CyNetwork cdtNetwork = cdt.getSelectedValue().getNetwork();
+		CyNetwork rinNetwork = rin.getSelectedValue().getNetwork();
+
+		merge(taskMonitor, cdtNetwork, rinNetwork);
+	}
+
+	public void merge(TaskMonitor taskMonitor, CyNetwork cdtNetwork, CyNetwork rinNetwork) {
 		// General approach:
 		// 1) Every node in CDT keeps its name and all columns
 		// 2) Every CDT node that has a corresponding RIN node gets RIN columns
@@ -79,8 +104,6 @@ public class MergeTask extends AbstractTask {
 		// 4) CDT nodes that represent multiple RIN nodes get links to corresponding RIN nodes
 		// 5) Node positions for nodes are based on RIN positions
 		// 6) CDT nodes without chain information get pushed outward
-		CyNetwork cdtNetwork = cdt.getSelectedValue().getNetwork();
-		CyNetwork rinNetwork = rin.getSelectedValue().getNetwork();
 
 		CyNetworkViewManager viewManager = manager.getService(CyNetworkViewManager.class);
 		CyNetworkView rinNetworkView = viewManager.getNetworkViews(rinNetwork).iterator().next();
@@ -91,15 +114,20 @@ public class MergeTask extends AbstractTask {
 		CyRootNetwork cdtRootNetwork = ((CySubNetwork)cdtNetwork).getRootNetwork();
 		CySubNetwork cdtSubNetwork = cdtRootNetwork.addSubNetwork(cdtNetwork.getNodeList(), null);
 
-		cdtSubNetwork.getRow(cdtSubNetwork).set(CyNetwork.NAME, rin.getSelectedValue()+" and "+cdt.getSelectedValue());
+		cdtSubNetwork.getRow(cdtSubNetwork).set(CyNetwork.NAME, 
+		                                        rin.getSelectedValue()+" and "+cdt.getSelectedValue());
+
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Getting significant edges");
 		for (CyEdge edge: cdtNetwork.getEdgeList()) {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
 			Double weight = cdtNetwork.getRow(edge).get("weight", Double.class);
-			if (weight < negativeCutoff || weight > positiveCutoff)
+			if (weight < negativeCutoff || weight > positiveCutoff) {
 				cdtSubNetwork.addEdge(edge);
+				if (weight < minWeight) minWeight = weight;
+				if (weight > maxWeight) maxWeight = weight;
+			}
 		}
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Mapping residues");
@@ -126,7 +154,7 @@ public class MergeTask extends AbstractTask {
 		// Create network columns in new network
 		CyTable cdtNetworkTable = cdtNetwork.getDefaultNetworkTable();
 		CyTable cdtSubNetworkTable = cdtSubNetwork.getDefaultNetworkTable();
-		copyColumns(cdtNetworkTable, cdtSubNetworkTable);
+		ModelUtils.copyColumns(cdtNetworkTable, cdtSubNetworkTable);
 		CyRow cdtNetworkRow = cdtNetwork.getRow(cdtNetwork);
 		CyRow cdtSubNetworkRow = cdtSubNetwork.getRow(cdtSubNetwork);
 
@@ -138,10 +166,12 @@ public class MergeTask extends AbstractTask {
 		}
 
 		// Create RIN node columns in new network
-		copyColumns(rinNetwork.getDefaultNodeTable(), cdtSubNetwork.getDefaultNodeTable());
+		ModelUtils.copyColumns(rinNetwork.getDefaultNodeTable(), 
+		                        cdtSubNetwork.getDefaultNodeTable());
 
 		// Create RIN edge columns in new network
-		copyColumns(rinNetwork.getDefaultEdgeTable(), cdtSubNetwork.getDefaultEdgeTable());
+		ModelUtils.copyColumns(rinNetwork.getDefaultEdgeTable(), 
+		                        cdtSubNetwork.getDefaultEdgeTable());
 
 		manager.flushEvents();
 
@@ -158,20 +188,18 @@ public class MergeTask extends AbstractTask {
 			if (!residueMap.containsKey(resString)) {
 				CyNode newNode = cdtSubNetwork.addNode();
 				addNodeToMap(residueMap, resString, newNode);
-				copyRow(rinNetwork.getDefaultNodeTable(), cdtSubNetwork.getDefaultNodeTable(),
-				        node, newNode, true);
+				ModelUtils.copyRow(rinNetwork.getDefaultNodeTable(), 
+				                    cdtSubNetwork.getDefaultNodeTable(),
+				                    node, newNode, true);
 			} else {
 				for (CyNode newNode: residueMap.get(resString)) {
-					copyRow(rinNetwork.getDefaultNodeTable(), cdtSubNetwork.getDefaultNodeTable(),
-					        node, newNode, false);
+					ModelUtils.copyRow(rinNetwork.getDefaultNodeTable(), 
+					                    cdtSubNetwork.getDefaultNodeTable(),
+					                    node, newNode, false);
 				}
 			}
 			progress = progress + 1.0;
 		}
-
-		// System.out.println("Flushing events");
-		// manager.flushEvents();
-		// System.out.println("done");
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Copying over RIN edges");
 		progress = 0.0;
@@ -191,8 +219,9 @@ public class MergeTask extends AbstractTask {
 			for (CyNode newSource: newSources) {
 				for (CyNode newTarget: newTargets) {
 					CyEdge newEdge = cdtSubNetwork.addEdge(newSource, newTarget, edge.isDirected());
-					copyRow(rinNetwork.getDefaultEdgeTable(), cdtSubNetwork.getDefaultEdgeTable(),
-						      edge, newEdge, true);
+					ModelUtils.copyRow(rinNetwork.getDefaultEdgeTable(), 
+					                    cdtSubNetwork.getDefaultEdgeTable(),
+						                  edge, newEdge, true);
 					edgeMap.put(edge, newEdge);
 				}
 			}
@@ -215,7 +244,8 @@ public class MergeTask extends AbstractTask {
 			String resString = rinNetwork.getRow(node).get("pdbFileName", String.class);
 			int offset = 0;
 			for (CyNode newNode: residueMap.get(resString)) {
-				rinBounds.add(copyNodeStyle(rinNetworkView.getNodeView(node), cdtNetworkView.getNodeView(newNode), offset));
+				rinBounds.add(styleHelper.copyNodeStyle(rinNetworkView.getNodeView(node), 
+				                                        cdtNetworkView.getNodeView(newNode), offset));
 				offset++;
 			}
 			progress = progress + 1.0;
@@ -225,10 +255,9 @@ public class MergeTask extends AbstractTask {
 		for (View<CyEdge> fromEv: rinNetworkView.getEdgeViews()) {
 			if (edgeMap.containsKey(fromEv.getModel())) {
 				View<CyEdge> toEv = cdtNetworkView.getEdgeView(edgeMap.get(fromEv.getModel()));
-				copyEdgeStyle(fromEv, toEv);
+				styleHelper.copyEdgeStyle(fromEv, toEv);
 			}
 		}
-
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating multi-residue edges");
 
@@ -247,7 +276,6 @@ public class MergeTask extends AbstractTask {
 			double ySum = 0;
 			int count = 0;
 			for (String res: parseResidues(residues)) {
-				// System.out.println("Looking for residue: "+res);
 				List<CyNode> targets = residueMap.get(res);
 				if (targets == null) {
 					xSum = xCenter;
@@ -271,73 +299,40 @@ public class MergeTask extends AbstractTask {
 			}
 		}
 
+		// Now layout the interaction partners
 		List<View<CyNode>> targetNodeViews = new ArrayList<>();
 		for (CyNode node: targetNodes) {
 			targetNodeViews.add(cdtNetworkView.getNodeView(node));
 		}
 
-		// Now layout the interaction partners
 		List<String> attrTree = cdtSubNetwork.getRow(cdtSubNetwork).getList("__attrClusters", String.class);
 		List<String> attrOrder = cdtSubNetwork.getRow(cdtSubNetwork).getList("__arrayOrder", String.class);
 		TreeLayout tl = new TreeLayout(cdtSubNetwork, targetNodeViews, attrTree);
 		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-rinBounds.getHeight()-200);
 		//
 		// Finally, create a new visual style based on the RIN style
-		// createStyle(cdtNetworkView);
+		styleHelper.createStyle(cdtNetworkView, minWeight, maxWeight, negativeCutoff, positiveCutoff);
 
 		manager.getService(CyNetworkManager.class).addNetwork(cdtSubNetwork);
 		manager.getService(CyNetworkViewManager.class).addNetworkView(cdtNetworkView);
-	}
-
-	void copyColumns(CyTable fromTable, CyTable toTable) {
-		for (CyColumn column: fromTable.getColumns()) {
-			String name = column.getName();
-			if (name.equals(CyNetwork.NAME) ||
-					name.equals(CyRootNetwork.SHARED_NAME) ||
-					name.equals(CyNetwork.SELECTED))
-				continue;
-			if (toTable.getColumn(name) != null)
-				continue;
-
-			if (column.getType().equals(List.class)) {
-				toTable.createListColumn(name, column.getListElementType(), false);
-			} else {
-				toTable.createColumn(name, column.getType(), false);
-			}
-		}
-	}
-
-	void copyRow(CyTable fromTable, CyTable toTable, CyIdentifiable fromCyId, CyIdentifiable toCyId,
-	             boolean includeNames) {
-		CyRow fromRow = fromTable.getRow(fromCyId.getSUID());
-		CyRow toRow = toTable.getRow(toCyId.getSUID());
-		for (CyColumn column: fromTable.getColumns()) {
-			String name = column.getName();
-			if (name.equals(CyNetwork.SELECTED)) continue;
-
-			if (!includeNames && 
-					(name.equals(CyNetwork.NAME) ||
-					 name.equals(CyRootNetwork.SHARED_NAME)))
-				continue;
-			Object rawValue = fromRow.getRaw(name);
-			if (rawValue != null)
-				toRow.set(name, rawValue);
-		}
+		manager.setMergedNetwork(cdtSubNetwork);
 	}
 
 	List<String> parseResidues(String residues) {
 		List<String> resList = new ArrayList<>();
 
-		String[] split1 = residues.split("[#.]");
+		String[] split1 = residues.split("#");
 		String pdb = split1[0];
-		String chain = split1[2];
-		if (split1[1].indexOf("-") > 0) {
-			String[] range = split1[1].split("-");
+		String[] resChain = split1[1].split("[.]");
+		String residue = resChain[0];
+		String chain = resChain[1];
+		if (residue.indexOf("-") > 0) {
+			String[] range = residue.split("-");
 			for (int i = Integer.parseInt(range[0]); i < Integer.parseInt(range[1]); i++) {
 				resList.add(pdb+"#"+i+"."+chain);
 			}
 		} else {
-			String[] resArray = split1[1].split(",");
+			String[] resArray = residue.split(",");
 			for (String res: resArray) {
 				resList.add(pdb+"#"+res+"."+chain);
 			}
@@ -350,26 +345,6 @@ public class MergeTask extends AbstractTask {
 		if (!map.containsKey(res))
 			map.put(res, new ArrayList<CyNode>());
 		map.get(res).add(node);
-	}
-
-	Point2D copyNodeStyle(View<CyNode> from, View<CyNode> to, int offset) {
-		double shift = 30.0*(double)offset;
-		double x = from.getVisualProperty(BasicVisualLexicon.NODE_X_LOCATION)+shift;
-		double y = from.getVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION)+shift;
-		to.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
-		to.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, y);
-		// Force the fill color
-		to.setLockedValue(BasicVisualLexicon.NODE_FILL_COLOR,
-		                  from.getVisualProperty(BasicVisualLexicon.NODE_FILL_COLOR));
-		return new Point2D.Double(x,y);
-	}
-
-	void copyEdgeStyle(View<CyEdge> from, View<CyEdge> to) {
-		to.setLockedValue(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT,
-		                  from.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT));
-		to.setLockedValue(BasicVisualLexicon.EDGE_WIDTH,
-		                  from.getVisualProperty(BasicVisualLexicon.EDGE_WIDTH));
-
 	}
 
 	class NamedNetwork {

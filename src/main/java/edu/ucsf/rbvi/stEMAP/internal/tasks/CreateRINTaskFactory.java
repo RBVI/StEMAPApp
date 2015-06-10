@@ -20,7 +20,7 @@ public class CreateRINTaskFactory extends AbstractTaskFactory {
 	}
 
 	public boolean isReady() {
-		if (manager.getPDB() == null)
+		if (manager.getPDB() == null && manager.usePDBFile() == false)
 			return false;
 		return true;
 	}
