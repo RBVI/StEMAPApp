@@ -1,8 +1,12 @@
 {
-	"PDB": "1ID3",
-	"ChimeraCommands": "turn x 90; focus",
+	"PDBId": "1id3"
+	"UsePDBFile": true
+	"PDBFile": "1id3_withTails_H4chainK_H3chainL.pdb"
+	"ChimeraCommands": "turn x 90; focus"
 	"ChainMap": {
-			"H4": "B",
-			"H3": "G"
+			"H4": "K",
+			"H3": "L"
 	}
+	"PositiveCutoff": 2.0
+	"NegativeCutoff": -3.0
 }
