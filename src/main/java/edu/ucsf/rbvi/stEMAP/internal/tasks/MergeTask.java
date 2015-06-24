@@ -228,12 +228,35 @@ public class MergeTask extends AbstractTask {
 			progress = progress + 1.0;
 		}
 
-		// manager.flushEvents();
+		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating multi-residue edges");
+		List<CyEdge> newEdges = new ArrayList<>();
+
+		// Add multi-residue edges
+		for (CyNode node: multipleResidues) {
+			if (cancelled) {
+				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
+			}
+			String residues = cdtSubNetwork.getRow(node).get("Residues", String.class);
+			for (String res: parseResidues(residues)) {
+				System.out.println("Looking at: '"+res+"'");
+				List<CyNode> targets = residueMap.get(res);
+				if (targets != null) {
+					// System.out.println("Found "+targets.size()+" targets");
+					for (CyNode target: targets) {
+						CyEdge newEdge = cdtSubNetwork.addEdge(node, target, true);
+						// Add a name for the edge
+						ModelUtils.nameEdge(cdtSubNetwork, newEdge, "multiple mutation");
+						newEdges.add(newEdge);
+					}
+				}
+			}
+		}
+
+		// Creating network view
+		CyNetworkView cdtNetworkView = manager.getService(CyNetworkViewFactory.class).createNetworkView(cdtSubNetwork);
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Copying over RIN node locations");
 		progress = 0.0;
-
-		CyNetworkView cdtNetworkView = manager.getService(CyNetworkViewFactory.class).createNetworkView(cdtSubNetwork);
 
 		Rectangle2D rinBounds = new Rectangle2D.Double();
 		for (CyNode node: rinNetwork.getNodeList()) {
@@ -259,7 +282,7 @@ public class MergeTask extends AbstractTask {
 			}
 		}
 
-		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating multi-residue edges");
+		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Moving multiple mutation nodes");
 
 		// Find a place to put the multi-residue nodes that point to 
 		// residues not in the RIN
@@ -272,32 +295,45 @@ public class MergeTask extends AbstractTask {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
 			String residues = cdtSubNetwork.getRow(node).get("Residues", String.class);
+			int count = 0;
 			double xSum = 0;
 			double ySum = 0;
-			int count = 0;
 			for (String res: parseResidues(residues)) {
 				List<CyNode> targets = residueMap.get(res);
-				if (targets == null) {
-					xSum = xCenter;
-					ySum = yCenter;
-					xCenter += 10;
-					yCenter += 10;
-				} else {
+				if (targets != null) {
+					// System.out.println("Found "+targets.size()+" targets");
 					for (CyNode target: targets) {
-						cdtSubNetwork.addEdge(node, target, true);
 						View<CyNode> tv = cdtNetworkView.getNodeView(target);
 						xSum += tv.getVisualProperty(BasicVisualLexicon.NODE_X_LOCATION);
-						ySum += tv.getVisualProperty(BasicVisualLexicon.NODE_X_LOCATION);
+						ySum += tv.getVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION);
 						count++;
 					}
-					xSum = xSum/(double)count;
-					ySum = ySum/(double)count;
 				}
-				View<CyNode> nv = cdtNetworkView.getNodeView(node);
-				nv.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, xSum);
-				nv.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, ySum);
 			}
+
+			if (xSum == 0.0 && ySum == 0.0) {
+				xSum = xCenter;
+				ySum = yCenter;
+				xCenter += 10;
+				yCenter += 10;
+			} else {
+				xSum = xSum/(double)count;
+				ySum = ySum/(double)count;
+			}
+
+			View<CyNode> nv = cdtNetworkView.getNodeView(node);
+			System.out.println("Moving node "+ModelUtils.getName(cdtSubNetwork, node)+" to "+xSum+", "+ySum);
+			nv.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, xSum);
+			nv.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, ySum);
+			nv.setLockedValue(BasicVisualLexicon.NODE_FILL_COLOR, Color.GREEN);
 		}
+
+		for (CyEdge edge: newEdges) {
+			// Add special styling for the edge
+			styleHelper.styleMultiEdge(cdtNetworkView, edge);
+		}
+
+		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Laying out interaction partners");
 
 		// Now layout the interaction partners
 		List<View<CyNode>> targetNodeViews = new ArrayList<>();
@@ -311,6 +347,7 @@ public class MergeTask extends AbstractTask {
 		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-rinBounds.getHeight()-200);
 		//
 		// Finally, create a new visual style based on the RIN style
+		System.out.println("Creating Style");
 		styleHelper.createStyle(cdtNetworkView, minWeight, maxWeight, negativeCutoff, positiveCutoff);
 
 		manager.getService(CyNetworkManager.class).addNetwork(cdtSubNetwork);
@@ -328,7 +365,7 @@ public class MergeTask extends AbstractTask {
 		String chain = resChain[1];
 		if (residue.indexOf("-") > 0) {
 			String[] range = residue.split("-");
-			for (int i = Integer.parseInt(range[0]); i < Integer.parseInt(range[1]); i++) {
+			for (int i = Integer.parseInt(range[0]); i <= Integer.parseInt(range[1]); i++) {
 				resList.add(pdb+"#"+i+"."+chain);
 			}
 		} else {

@@ -61,10 +61,12 @@ public class CyActivator extends AbstractCyActivator {
 			Properties selectProps = new Properties();
 			SelectTaskFactory selectTaskFactory = new SelectTaskFactory(manager);
 
+			/*
 			selectProps.setProperty(PREFERRED_MENU, "Apps.stEMAP");
 			selectProps.setProperty(TITLE, "Select interactors");
 			selectProps.setProperty(MENU_GRAVITY, "2.0");
 			registerService(bc, selectTaskFactory, NetworkTaskFactory.class, selectProps);
+			*/
 
 			selectProps = new Properties();
 			selectProps.setProperty(PREFERRED_MENU, "Apps.stEMAP");

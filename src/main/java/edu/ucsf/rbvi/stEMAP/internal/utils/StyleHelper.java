@@ -93,4 +93,14 @@ public class StyleHelper {
 		                  from.getVisualProperty(BasicVisualLexicon.EDGE_WIDTH));
 
 	}
+
+	public void styleMultiEdge(CyNetworkView netView, CyEdge edge) {
+		View<CyEdge> ev = netView.getEdgeView(edge);
+		if (ev == null) {
+			System.out.println("No view for edge: "+edge);
+			return;
+		}
+		ev.setLockedValue(BasicVisualLexicon.EDGE_WIDTH, 3.0);
+		ev.setLockedValue(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT, Color.BLACK);
+	}
 }

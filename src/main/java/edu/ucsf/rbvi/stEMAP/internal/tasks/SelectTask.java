@@ -1,11 +1,16 @@
 package edu.ucsf.rbvi.stEMAP.internal.tasks;
 
+import java.awt.Color;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNode;
+import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.work.AbstractTask;
 import org.cytoscape.work.TaskMonitor;
 
@@ -16,11 +21,13 @@ public class SelectTask extends AbstractTask {
 	final StEMAPManager manager;
 	final List<CyNode> nodeList;
 	final CyNetwork network;
+	final CyNetworkView view;
 
-	public SelectTask(final StEMAPManager manager, final List<CyNode> nodes, final CyNetwork net) {
+	public SelectTask(final StEMAPManager manager, final List<CyNode> nodes, final CyNetworkView view) {
 		this.manager = manager;
 		this.nodeList = nodes;
-		this.network = net;
+		this.network = view.getModel();
+		this.view = view;
 	}
 
 	public void run(TaskMonitor taskMonitor) {
@@ -37,6 +44,7 @@ public class SelectTask extends AbstractTask {
 		//	     o Highlight the residues that interact
 		//	     o If multiple mutation highlight the residues for the mutation
 		//	     o Show spheres on structure
+		Map<String, Color> colorMap = new HashMap<>();
 		List<String> residues = new ArrayList<>();
 		for (CyNode node: nodeList) {
 			NodeType type = manager.getNodeType(network, node);
@@ -60,9 +68,13 @@ public class SelectTask extends AbstractTask {
 				break;
 			case GENE:
 				{
-					List<CyNode> residueNodes = manager.getResidueNodes(network, node);
-					manager.selectNodes(network, residueNodes);
-					residues.addAll(manager.getResidues(network, residueNodes));
+					// Handle this carefully.  We want to get the color to map onto
+					// the residues
+					Map<String, Color> cm = manager.getResiduesAndColors(view, node);
+					for (String residue: cm.keySet()) {
+						colorMap.put(residue, cm.get(residue));
+						residues.add(residue);
+					}
 				}
 				break;
 			case STRUCTURE:
@@ -75,6 +87,8 @@ public class SelectTask extends AbstractTask {
 
 		}
 		manager.showSpheres(residues);
+		if (colorMap.size() > 0)
+			manager.colorSpheres(colorMap);
 
 	}
 }

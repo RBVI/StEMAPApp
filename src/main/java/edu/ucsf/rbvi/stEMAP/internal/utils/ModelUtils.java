@@ -146,4 +146,14 @@ public class ModelUtils {
 				toRow.set(name, rawValue);
 		}
 	}
+
+	public static void nameEdge(CyNetwork network, CyEdge edge, String interaction) {
+		String sourceName = getName(network, edge.getSource());
+		String targetName = getName(network, edge.getTarget());
+		network.getRow(edge).set(CyNetwork.NAME, sourceName+" ("+interaction+") "+targetName);
+	}
+
+	public static String getName(CyNetwork network, CyIdentifiable cyId) {
+		return network.getRow(cyId).get(CyNetwork.NAME, String.class);
+	}
 }

@@ -1,5 +1,7 @@
 package edu.ucsf.rbvi.stEMAP.internal.model;
 
+import java.awt.Color;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,6 +19,9 @@ import org.cytoscape.model.CyNetworkManager;
 import org.cytoscape.model.CyNode;
 import org.cytoscape.event.CyEventHelper;
 import org.cytoscape.service.util.CyServiceRegistrar;
+import org.cytoscape.view.model.CyNetworkView;
+import org.cytoscape.view.model.View;
+import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 import org.cytoscape.work.SynchronousTaskManager;
 import org.cytoscape.work.FinishStatus;
 import org.cytoscape.work.ObservableTask;
@@ -126,6 +131,46 @@ public class StEMAPManager implements TaskObserver {
 		return geneNodes;
 	}
 
+	public List<CyEdge> getConnectingResidueEdges(CyNetwork net, CyNode node) {
+		List<CyEdge> edges = new ArrayList<>();
+		for (CyEdge edge: net.getAdjacentEdgeList(node, CyEdge.Type.ANY)) {
+			CyNode neighbor = edge.getSource();
+			if (edge.getSource().equals(node)) {
+				neighbor = edge.getTarget();
+			}
+			String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
+			if (pdb != null && pdb.length() > 0) {
+				edges.add(edge);
+			} else {
+				String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
+				if (mutType != null && (mutType.equals("del") || mutType.equals("multiple"))) {
+					edges.add(edge);
+				}
+			}
+		}
+		return edges;
+	}
+
+	public Map<String, Color> getResiduesAndColors(CyNetworkView netView, CyNode node) {
+		Map<String, Color> colorMap = new HashMap<>();
+
+		CyNetwork net = netView.getModel();
+		for (CyEdge edge: net.getAdjacentEdgeList(node, CyEdge.Type.ANY)) {
+			CyNode resNode = edge.getSource();
+			if (edge.getSource().equals(node)) {
+				resNode = edge.getTarget();
+			}
+			String pdb = net.getRow(resNode).get(ModelUtils.PDB_COLUMN, String.class);
+			if (pdb != null && pdb.length() > 0) {
+				String residue = getResidue(net, resNode);
+				View<CyEdge> ev = netView.getEdgeView(edge);
+				Color c = (Color)ev.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
+				colorMap.put(residue, c);
+			}
+		}
+		return colorMap;
+	}
+
 	public List<CyNode> getResidueNodes(CyNetwork net, CyNode node) {
 		List<CyNode> residueNodes = new ArrayList<>();
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
@@ -152,14 +197,19 @@ public class StEMAPManager implements TaskObserver {
 	public List<String> getResidues(CyNetwork net, List<CyNode> nodes) {
 		Set<String> residues = new HashSet<>();
 		for (CyNode node: nodes) {
-			String pdb = net.getRow(node).get(ModelUtils.PDB_COLUMN, String.class);
-			if (pdb == null || pdb.length() == 0)
-				continue;
-
-			String[] model = pdb.split("#");
-			residues.add(model[1]);
+			String residue = getResidue(net, node);
+			if (residue != null)
+				residues.add(residue);
 		}
 		return new ArrayList<String>(residues);
+	}
+
+	public String getResidue(CyNetwork net, CyNode node) {
+		String pdb = net.getRow(node).get(ModelUtils.PDB_COLUMN, String.class);
+		if (pdb == null || pdb.length() == 0)
+			return null;
+		String[] model = pdb.split("#");
+		return model[1];
 	}
 
 	public void loadPDB(String pdbPath, String extraCommands) {
@@ -198,6 +248,8 @@ public class StEMAPManager implements TaskObserver {
 		} catch (Exception e) {}
 
 		Map<String, Object> args = new HashMap<>();
+		args.put("includeConnectivity", "true");
+		args.put("ignoreWater", "true");
 		executeCommand("structureViz", "createRIN", args, null);
 
 		// Now, figure out which network is new
@@ -208,6 +260,20 @@ public class StEMAPManager implements TaskObserver {
 				break;
 			}
 		}
+	}
+
+	public void colorSpheres(Map<String, Color> colorMap) {
+		for (String residue: colorMap.keySet()) {
+			colorResidue(residue, colorMap.get(residue));
+		}
+	}
+
+	public void colorResidue(String residue, Color color) {
+		double r = (double)color.getRed()/(double)255;
+		double g = (double)color.getGreen()/(double)255;
+		double b = (double)color.getBlue()/(double)255;
+		String command = "color "+r+","+g+","+b+" #"+modelNumber+":"+residue;
+		chimeraCommand(command);
 	}
 
 	public void showSpheres(List<String> residues) {
@@ -222,13 +288,15 @@ public class StEMAPManager implements TaskObserver {
 
 		lastResidues = command.substring(0, command.length()-1);
 
-		System.out.println("Sending command: sel "+lastResidues);
+		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
 		chimeraCommand("sel "+lastResidues);
 
 		// Change to sphere
 		chimeraCommand("disp sel");
+		// System.out.println("Sending command: disp sel");
 		chimeraCommand("repr sphere sel");
+		// System.out.println("Sending command: repr sphere sel");
 	}
 
 	public void chimeraCommand(String command) {

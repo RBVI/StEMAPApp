@@ -16,7 +16,7 @@ import org.cytoscape.work.TaskIterator;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 
 public class SelectTaskFactory extends AbstractNodeViewTaskFactory
-                               implements NetworkViewTaskFactory, NetworkTaskFactory {
+                               implements NetworkViewTaskFactory {
 	public final StEMAPManager manager;
 
 	public SelectTaskFactory(final StEMAPManager manager) {
@@ -25,9 +25,12 @@ public class SelectTaskFactory extends AbstractNodeViewTaskFactory
 
 	@Override
 	public TaskIterator createTaskIterator(View<CyNode> nodeView, CyNetworkView networkView) {
+		List<CyNode> selectedNodes = CyTableUtil.getNodesInState(networkView.getModel(), CyNetwork.SELECTED, true);
+		if (nodeView != null && !selectedNodes.contains(nodeView.getModel()))
+			selectedNodes.add(nodeView.getModel());
 		TaskIterator ti = new TaskIterator(new SelectTask(manager, 
-		                                                  Collections.singletonList(nodeView.getModel()), 
-		                                                  networkView.getModel()));
+		                                                  selectedNodes,
+		                                                  networkView));
 		return ti;
 	}
 
@@ -40,7 +43,7 @@ public class SelectTaskFactory extends AbstractNodeViewTaskFactory
 
 	@Override
 	public TaskIterator createTaskIterator(CyNetworkView networkView) {
-		return createTaskIterator(networkView.getModel());
+		return createTaskIterator(null, networkView);
 	}
 
 	@Override
@@ -49,14 +52,6 @@ public class SelectTaskFactory extends AbstractNodeViewTaskFactory
 		return isReady(networkView.getModel());
 	}
 
-	@Override
-	public TaskIterator createTaskIterator(CyNetwork network) {
-		List<CyNode> selectedNodes = CyTableUtil.getNodesInState(network, CyNetwork.SELECTED, true);
-		TaskIterator ti = new TaskIterator(new SelectTask(manager, selectedNodes, network));
-		return ti;
-	}
-
-	@Override
 	public boolean isReady(CyNetwork network) {
 		if (network == null || manager.getPDB() == null)
 			return false;
