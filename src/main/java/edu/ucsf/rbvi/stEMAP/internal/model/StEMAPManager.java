@@ -81,6 +81,14 @@ public class StEMAPManager implements TaskObserver {
 		return map.getChain(chain);
 	}
 
+	public double getPositiveCutoff() {
+		return map.getPositiveCutoff();
+	}
+
+	public double getNegativeCutoff() {
+		return map.getNegativeCutoff();
+	}
+
 	public void setRINNetwork(CyNetwork net) {
 		rinNetwork = net;
 	}
@@ -263,22 +271,29 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	public void colorSpheres(Map<String, Color> colorMap) {
+		String command = null;
 		for (String residue: colorMap.keySet()) {
-			colorResidue(residue, colorMap.get(residue));
+			String comm = colorResidue(residue, colorMap.get(residue));
+			if (command == null)
+				command = comm;
+			else
+				command = command+";"+comm;
 		}
+		chimeraCommand(command);
 	}
 
-	public void colorResidue(String residue, Color color) {
+	public String colorResidue(String residue, Color color) {
 		double r = (double)color.getRed()/(double)255;
 		double g = (double)color.getGreen()/(double)255;
 		double b = (double)color.getBlue()/(double)255;
 		String command = "color "+r+","+g+","+b+" #"+modelNumber+":"+residue;
-		chimeraCommand(command);
+		// System.out.println("Command: "+command);
+		return command;
 	}
 
 	public void showSpheres(List<String> residues) {
 		if (lastResidues != null) {
-			System.out.println("Sending command: ~disp "+lastResidues);
+			// System.out.println("Sending command: ~disp "+lastResidues);
 			chimeraCommand("~disp "+lastResidues);
 		}
 		// Make it a comma separated list

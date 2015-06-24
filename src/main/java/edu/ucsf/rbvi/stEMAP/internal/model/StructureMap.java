@@ -20,6 +20,8 @@ public class StructureMap {
 	boolean usePDBFile = false;
 	String chimeraCommands = "";
 	Map<String, String> chainMap = null;
+	double positiveCutoff = 1.0;
+	double negativeCutoff = -2.0;
 
 	public StructureMap(File stFile) throws IOException, FileNotFoundException {
 		pdbId = null;
@@ -57,6 +59,11 @@ public class StructureMap {
 				chainMap.put((String)obj, (String)chains.get(obj));
       }
 
+			if (jsonObject.containsKey("PositiveCutoff"))
+				positiveCutoff = (Double)jsonObject.get("PositiveCutoff");
+			if (jsonObject.containsKey("NegativeCutoff"))
+				negativeCutoff = (Double)jsonObject.get("NegativeCutoff");
+
     }
     catch (ParseException pe) {
       throw new RuntimeException("Unable to parse "+stFile+": "+pe);
@@ -68,5 +75,7 @@ public class StructureMap {
 	public String getPDBFile() { return pdbFile; }
 	public String getChimeraCommands() { return chimeraCommands; }
 	public String getChain(String key) { return chainMap.get(key); }
+	public double getPositiveCutoff() { return positiveCutoff; }
+	public double getNegativeCutoff() { return negativeCutoff; }
 
 }

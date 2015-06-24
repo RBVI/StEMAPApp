@@ -87,6 +87,8 @@ public class MergeTask extends AbstractTask {
 		cdt = new ListSingleSelection<NamedNetwork>(netList);
 
 		styleHelper = new StyleHelper(manager);
+		positiveCutoff = manager.getPositiveCutoff();
+		negativeCutoff = manager.getNegativeCutoff();
 	}
 
 	public void run(TaskMonitor taskMonitor) {
@@ -238,7 +240,7 @@ public class MergeTask extends AbstractTask {
 			}
 			String residues = cdtSubNetwork.getRow(node).get("Residues", String.class);
 			for (String res: parseResidues(residues)) {
-				System.out.println("Looking at: '"+res+"'");
+				// System.out.println("Looking at: '"+res+"'");
 				List<CyNode> targets = residueMap.get(res);
 				if (targets != null) {
 					// System.out.println("Found "+targets.size()+" targets");
@@ -322,7 +324,7 @@ public class MergeTask extends AbstractTask {
 			}
 
 			View<CyNode> nv = cdtNetworkView.getNodeView(node);
-			System.out.println("Moving node "+ModelUtils.getName(cdtSubNetwork, node)+" to "+xSum+", "+ySum);
+			// System.out.println("Moving node "+ModelUtils.getName(cdtSubNetwork, node)+" to "+xSum+", "+ySum);
 			nv.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, xSum);
 			nv.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, ySum);
 			nv.setLockedValue(BasicVisualLexicon.NODE_FILL_COLOR, Color.GREEN);
@@ -343,11 +345,14 @@ public class MergeTask extends AbstractTask {
 
 		List<String> attrTree = cdtSubNetwork.getRow(cdtSubNetwork).getList("__attrClusters", String.class);
 		List<String> attrOrder = cdtSubNetwork.getRow(cdtSubNetwork).getList("__arrayOrder", String.class);
+		System.out.println("Creating tree");
 		TreeLayout tl = new TreeLayout(cdtSubNetwork, targetNodeViews, attrTree);
+		System.out.println("Doing layout");
 		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-rinBounds.getHeight()-200);
+		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating Style");
 		//
 		// Finally, create a new visual style based on the RIN style
-		System.out.println("Creating Style");
+		// System.out.println("Creating Style");
 		styleHelper.createStyle(cdtNetworkView, minWeight, maxWeight, negativeCutoff, positiveCutoff);
 
 		manager.getService(CyNetworkManager.class).addNetwork(cdtSubNetwork);

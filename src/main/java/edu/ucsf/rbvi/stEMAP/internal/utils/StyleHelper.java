@@ -62,10 +62,10 @@ public class StyleHelper {
 						                                              Double.class, 
 																					                BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
 		edgeColor.addPoint(minWeight, new BoundaryRangeValues(Color.CYAN, Color.CYAN, Color.CYAN));
-		edgeColor.addPoint(negativeCutoff, 
+		edgeColor.addPoint(0.0, 
 		                   new BoundaryRangeValues(Color.WHITE, Color.WHITE, Color.WHITE));
-		edgeColor.addPoint(positiveCutoff, 
-		                   new BoundaryRangeValues(Color.WHITE, Color.WHITE, Color.WHITE));
+		//edgeColor.addPoint(positiveCutoff, 
+		//                   new BoundaryRangeValues(Color.WHITE, Color.WHITE, Color.WHITE));
 		edgeColor.addPoint(maxWeight, new BoundaryRangeValues(Color.YELLOW, Color.YELLOW, Color.YELLOW));
 		vs.addVisualMappingFunction(edgeColor);
 		vmm.addVisualStyle(vs);
