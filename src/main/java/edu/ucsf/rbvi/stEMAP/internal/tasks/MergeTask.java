@@ -141,7 +141,7 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
-			String residue = cdtSubNetwork.getRow(node).get("Residues", String.class);
+			String residue = cdtSubNetwork.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			if (residue != null && residue.length() > 0) {
 				if (residue.indexOf("-") == -1 &&
 						residue.indexOf(",") == -1)
@@ -186,7 +186,7 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
-			String resString = rinNetwork.getRow(node).get("pdbFileName", String.class);
+			String resString = rinNetwork.getRow(node).get(ModelUtils.PDB_COLUMN, String.class);
 			if (!residueMap.containsKey(resString)) {
 				CyNode newNode = cdtSubNetwork.addNode();
 				addNodeToMap(residueMap, resString, newNode);
@@ -214,9 +214,11 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
-			String sourceResString = rinNetwork.getRow(edge.getSource()).get("pdbFileName", String.class);
+			String sourceResString = 
+							rinNetwork.getRow(edge.getSource()).get(ModelUtils.PDB_COLUMN, String.class);
 			List<CyNode> newSources = residueMap.get(sourceResString);
-			String targetResString = rinNetwork.getRow(edge.getTarget()).get("pdbFileName", String.class);
+			String targetResString = 
+							rinNetwork.getRow(edge.getTarget()).get(ModelUtils.PDB_COLUMN, String.class);
 			List<CyNode> newTargets = residueMap.get(targetResString);
 			for (CyNode newSource: newSources) {
 				for (CyNode newTarget: newTargets) {
@@ -238,7 +240,7 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
-			String residues = cdtSubNetwork.getRow(node).get("Residues", String.class);
+			String residues = cdtSubNetwork.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			for (String res: parseResidues(residues)) {
 				// System.out.println("Looking at: '"+res+"'");
 				List<CyNode> targets = residueMap.get(res);
@@ -266,7 +268,7 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) { taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return; }
 			// This seems to be redundant, but it works better if we do this after all of the nodes
 			// have been created in the new network
-			String resString = rinNetwork.getRow(node).get("pdbFileName", String.class);
+			String resString = rinNetwork.getRow(node).get(ModelUtils.PDB_COLUMN, String.class);
 			int offset = 0;
 			for (CyNode newNode: residueMap.get(resString)) {
 				rinBounds.add(styleHelper.copyNodeStyle(rinNetworkView.getNodeView(node), 
@@ -296,7 +298,7 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
-			String residues = cdtSubNetwork.getRow(node).get("Residues", String.class);
+			String residues = cdtSubNetwork.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			int count = 0;
 			double xSum = 0;
 			double ySum = 0;
@@ -348,7 +350,7 @@ public class MergeTask extends AbstractTask {
 		System.out.println("Creating tree");
 		TreeLayout tl = new TreeLayout(cdtSubNetwork, targetNodeViews, attrTree);
 		System.out.println("Doing layout");
-		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-rinBounds.getHeight()-200);
+		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-200);
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating Style");
 		//
 		// Finally, create a new visual style based on the RIN style

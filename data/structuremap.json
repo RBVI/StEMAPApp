@@ -9,8 +9,8 @@
 		"includeContacts": false
 	}
 	"ChainMap": {
-			"H4": "A",
-			"H3": "B"
+			"H4": ["A","E"],
+			"H3": ["B","F"]
 	}
 	"PositiveCutoff": 2.0
 	"NegativeCutoff": -3.0

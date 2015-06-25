@@ -77,7 +77,7 @@ public class ModelUtils {
 			network.getRow(node).set(CHAIN_COLUMN, chRes[0]);
 			network.getRow(node).set(ID_COLUMN, chRes[1]);
 			String res = ModelUtils.formatResidues(split1[1], network, node, MUT_TYPE_COLUMN);
-			network.getRow(node).set(RESIDUE_COLUMN, pdbId+"#"+res+"."+manager.getChain(chRes[0]));
+			network.getRow(node).set(RESIDUE_COLUMN, pdbId+"#"+res+"."+manager.getPrimaryChain(chRes[0]));
 			// System.out.println("Created columns for "+name);
 			count++;
 		}

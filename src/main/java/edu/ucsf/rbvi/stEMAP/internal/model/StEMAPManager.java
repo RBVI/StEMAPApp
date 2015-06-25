@@ -76,9 +76,13 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 
-	public String getChain(String chain) {
+	public String getPrimaryChain(String chain) {
 		if (map == null) return null;
-		return map.getChain(chain);
+		return map.getPrimaryChain(chain);
+	}
+
+	public List<String> getDuplicateChains(String chain) {
+		return map.getDuplicateChains(chain);
 	}
 
 	public double getPositiveCutoff() {
@@ -217,7 +221,7 @@ public class StEMAPManager implements TaskObserver {
 		if (pdb == null || pdb.length() == 0)
 			return null;
 		String[] model = pdb.split("#");
-		return model[1];
+		return addChains(model[1]);
 	}
 
 	public void loadPDB(String pdbPath, String extraCommands) {
@@ -284,7 +288,7 @@ public class StEMAPManager implements TaskObserver {
 		double r = (double)color.getRed()/(double)255;
 		double g = (double)color.getGreen()/(double)255;
 		double b = (double)color.getBlue()/(double)255;
-		String command = "color "+r+","+g+","+b+" #"+modelNumber+":"+residue;
+		String command = "color "+r+","+g+","+b+",a #"+modelNumber+":"+residue;
 		// System.out.println("Command: "+command);
 		return command;
 	}
@@ -304,6 +308,7 @@ public class StEMAPManager implements TaskObserver {
 		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
 		chimeraCommand("sel "+lastResidues);
+		// System.out.println("chimera: sel "+lastResidues);
 
 		// Change to sphere
 		chimeraCommand("disp sel");
@@ -376,6 +381,19 @@ public class StEMAPManager implements TaskObserver {
 		try {
 			modelNumber = Integer.parseInt(model);
  		} catch (Exception e) {}
+	}
+
+	private String addChains(String resChain) {
+		String [] rc = resChain.split("[.]");
+		String chain = rc[1];
+		String residue = rc[0];
+		List<String> chains = getDuplicateChains(chain); // Get the chain aliases
+		if (chains != null && chains.size() > 0) {
+			for (String ch: chains) {
+				resChain += ","+residue+"."+ch;
+			}
+		}
+		return resChain;
 	}
 
 }

@@ -6,7 +6,9 @@ import java.io.FileReader;
 import java.io.IOException;
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.json.simple.JSONArray;
@@ -20,6 +22,7 @@ public class StructureMap {
 	boolean usePDBFile = false;
 	String chimeraCommands = "";
 	Map<String, String> chainMap = null;
+	Map<String, List<String>> duplicateChainMap = null;
 	Map<String, Object> rinParameters = null;
 	double positiveCutoff = 1.0;
 	double negativeCutoff = -2.0;
@@ -28,6 +31,7 @@ public class StructureMap {
 		pdbId = null;
 		chimeraCommands = "";
 		chainMap = new HashMap<>();
+		duplicateChainMap = new HashMap<>();
 		rinParameters = new HashMap<String, Object>();
 
     FileReader reader = new FileReader(stFile);
@@ -58,7 +62,23 @@ public class StructureMap {
 			JSONObject chains = (JSONObject)jsonObject.get("ChainMap");
 			
       for (Object obj: chains.keySet()) {
-				chainMap.put((String)obj, (String)chains.get(obj));
+				if (chains.get(obj) instanceof List) {
+					List<?> objList = (List<?>)chains.get(obj);
+					List<String> chainList = new ArrayList<>();
+					String primaryChain = null;
+					for (Object o: objList) {
+						if (primaryChain == null) {
+							primaryChain = (String)o;
+							chainMap.put((String)obj, (String)primaryChain);
+						} else {
+							chainList.add((String)o);
+						}
+					}
+					if (chainList.size() > 0)
+						duplicateChainMap.put(primaryChain, chainList);
+				}  else {
+					chainMap.put((String)obj, (String)chains.get(obj));
+				}
       }
 
 			if (jsonObject.containsKey("PositiveCutoff"))
@@ -83,7 +103,12 @@ public class StructureMap {
 	public boolean usePDBFile() { return usePDBFile; }
 	public String getPDBFile() { return pdbFile; }
 	public String getChimeraCommands() { return chimeraCommands; }
-	public String getChain(String key) { return chainMap.get(key); }
+	public String getPrimaryChain(String key) { 
+		return chainMap.get(key); 
+	}
+	public List<String> getDuplicateChains(String key) { 
+		return duplicateChainMap.get(key); 
+	}
 	public double getPositiveCutoff() { return positiveCutoff; }
 	public double getNegativeCutoff() { return negativeCutoff; }
 	public Map<String, Object> getRINParameters() { return rinParameters; }
