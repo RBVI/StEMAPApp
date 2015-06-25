@@ -20,6 +20,7 @@ public class StructureMap {
 	boolean usePDBFile = false;
 	String chimeraCommands = "";
 	Map<String, String> chainMap = null;
+	Map<String, Object> rinParameters = null;
 	double positiveCutoff = 1.0;
 	double negativeCutoff = -2.0;
 
@@ -27,6 +28,7 @@ public class StructureMap {
 		pdbId = null;
 		chimeraCommands = "";
 		chainMap = new HashMap<>();
+		rinParameters = new HashMap<String, Object>();
 
     FileReader reader = new FileReader(stFile);
 
@@ -64,6 +66,13 @@ public class StructureMap {
 			if (jsonObject.containsKey("NegativeCutoff"))
 				negativeCutoff = (Double)jsonObject.get("NegativeCutoff");
 
+			if (jsonObject.containsKey("RINParameters")) {
+				JSONObject rinParams = (JSONObject)jsonObject.get("RINParameters");
+				for (Object obj: rinParams.keySet()) {
+					rinParameters.put((String)obj, rinParams.get(obj).toString());
+				}
+			}
+
     }
     catch (ParseException pe) {
       throw new RuntimeException("Unable to parse "+stFile+": "+pe);
@@ -77,5 +86,6 @@ public class StructureMap {
 	public String getChain(String key) { return chainMap.get(key); }
 	public double getPositiveCutoff() { return positiveCutoff; }
 	public double getNegativeCutoff() { return negativeCutoff; }
+	public Map<String, Object> getRINParameters() { return rinParameters; }
 
 }

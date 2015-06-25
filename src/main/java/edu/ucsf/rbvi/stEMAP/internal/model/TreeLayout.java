@@ -88,6 +88,7 @@ public class TreeLayout {
 				x = x+size+spacing;
 			} else {
 				x = x+(size+spacing)/2.0;
+				lastLevel = level;
 			}
 
 			View<CyNode> nv = nodeMap.get(nodeName);

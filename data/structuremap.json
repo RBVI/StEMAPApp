@@ -3,6 +3,11 @@
 	"UsePDBFile": true
 	"PDBFile": "1id3_withTails_H4chainA_H3chainB.pdb"
 	"ChimeraCommands": "turn x 90; focus"
+	"RINParameters": {
+		"includeConnectivity": true
+		"includeHBonds": false
+		"includeContacts": false
+	}
 	"ChainMap": {
 			"H4": "A",
 			"H3": "B"

@@ -255,9 +255,7 @@ public class StEMAPManager implements TaskObserver {
 			Thread.sleep(500);
 		} catch (Exception e) {}
 
-		Map<String, Object> args = new HashMap<>();
-		args.put("includeConnectivity", "true");
-		args.put("ignoreWater", "true");
+		Map<String, Object> args = map.getRINParameters();
 		executeCommand("structureViz", "createRIN", args, null);
 
 		// Now, figure out which network is new
