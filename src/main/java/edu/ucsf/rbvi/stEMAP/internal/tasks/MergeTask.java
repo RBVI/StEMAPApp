@@ -347,9 +347,9 @@ public class MergeTask extends AbstractTask {
 
 		List<String> attrTree = cdtSubNetwork.getRow(cdtSubNetwork).getList("__attrClusters", String.class);
 		List<String> attrOrder = cdtSubNetwork.getRow(cdtSubNetwork).getList("__arrayOrder", String.class);
-		System.out.println("Creating tree");
+		// System.out.println("Creating tree");
 		TreeLayout tl = new TreeLayout(cdtSubNetwork, targetNodeViews, attrTree);
-		System.out.println("Doing layout");
+		// System.out.println("Doing layout");
 		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-200);
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating Style");
 		//

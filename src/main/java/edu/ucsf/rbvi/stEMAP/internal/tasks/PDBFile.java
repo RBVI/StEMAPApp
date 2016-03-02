@@ -16,7 +16,7 @@ public class PDBFile {
 	public PDBFile(final StEMAPManager manager) {
 		this.manager = manager;
 		if (manager.getPDBFile() != null)
-			pdbFile = new File(manager.getPDBFile());
+			pdbFile = manager.getPDBFile();
 	}
 
 	public File getPDBFile() { return pdbFile; }

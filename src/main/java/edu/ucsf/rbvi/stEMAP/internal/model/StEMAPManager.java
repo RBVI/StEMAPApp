@@ -32,11 +32,11 @@ import org.cytoscape.work.TaskObserver;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils.NodeType;
 
-public class StEMAPManager implements TaskObserver {
+public class StEMAPManager implements TaskObserver { 
 	final CyServiceRegistrar serviceRegistrar;
 	final CyEventHelper eventHelper;
 	CommandExecutorTaskFactory commandTaskFactory = null;
-	SynchronousTaskManager taskManager = null;
+	SynchronousTaskManager<?> taskManager = null;
 
 	// State variables
 	CyNetwork rinNetwork = null;
@@ -46,6 +46,9 @@ public class StEMAPManager implements TaskObserver {
 	int modelNumber = -1;
 	String lastResidues = null;
 
+	File mapFile = null;
+	File pdbFile = null;
+
 	public StEMAPManager(final CyServiceRegistrar cyRegistrar) {
 		this.serviceRegistrar = cyRegistrar;
 		this.eventHelper = serviceRegistrar.getService(CyEventHelper.class);
@@ -53,7 +56,13 @@ public class StEMAPManager implements TaskObserver {
 
 	public void readStructureMap(File mapFile) throws IOException {
 		map = new StructureMap(mapFile);
+		if (map != null) {
+			this.mapFile = mapFile;
+		}
 	}
+
+	public File getMapFile() { return mapFile; }
+	public File getPDBFile() { return pdbFile; }
 
 	public String getPDB() {
 		if (map == null) return null;
@@ -65,9 +74,9 @@ public class StEMAPManager implements TaskObserver {
 		return map.usePDBFile();
 	}
 
-	public String getPDBFile() {
+	public String getPDBFileName() {
 		if (map == null) return null;
-		return map.getPDBFile();
+		return map.getPDBFileName();
 	}
 
 	public String getChimeraCommands() {
@@ -226,9 +235,10 @@ public class StEMAPManager implements TaskObserver {
 
 	public void loadPDB(String pdbPath, String extraCommands) {
 		Map<String, Object> args = new HashMap<>();
-		if (pdbPath != null)
+		if (pdbPath != null) {
 			args.put("structureFile", pdbPath);
-		else
+			pdbFile = new File(pdbPath);
+		} else
 			args.put("pdbID", getPDB());
 
 		args.put("showDialog", "true");

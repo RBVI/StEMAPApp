@@ -49,8 +49,8 @@ public class ModelUtils {
 		int count = 0;
 
 		String pdbId = manager.getPDB();
-		if (manager.usePDBFile() && manager.getPDBFile() != null)
-			pdbId = manager.getPDBFile();
+		if (manager.usePDBFile() && manager.getPDBFileName() != null)
+			pdbId = manager.getPDBFileName();
 
 		for (CyNode node: network.getNodeList()) {
 			String name = network.getRow(node).get(CyNetwork.NAME, String.class);

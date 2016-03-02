@@ -25,10 +25,13 @@ import org.cytoscape.work.TaskFactory;
 
 import org.cytoscape.service.util.CyServiceRegistrar;
 import org.cytoscape.service.util.AbstractCyActivator;
+import org.cytoscape.session.events.SessionAboutToBeSavedListener;
+import org.cytoscape.session.events.SessionLoadedListener;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
+import edu.ucsf.rbvi.stEMAP.internal.model.SessionListener;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.BuildMergedNetworkTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.CreateRINTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.MergeTaskFactory;
@@ -119,6 +122,12 @@ public class CyActivator extends AbstractCyActivator {
 			mergeProps.setProperty(MENU_GRAVITY, "13.0");
 			registerService(bc, mergeTaskFactory, TaskFactory.class, mergeProps);
 		}
-		
+
+		{
+			Properties props = new Properties();
+			SessionListener listener = new SessionListener(manager);
+			registerService(bc, listener, SessionAboutToBeSavedListener.class, props);
+			registerService(bc, listener, SessionLoadedListener.class, props);
+		}
 	}
 }
