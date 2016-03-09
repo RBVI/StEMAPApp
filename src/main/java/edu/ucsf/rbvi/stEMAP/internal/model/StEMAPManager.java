@@ -5,12 +5,14 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.cytoscape.command.CommandExecutorTaskFactory;
 import org.cytoscape.model.CyEdge;
@@ -38,6 +40,9 @@ public class StEMAPManager implements TaskObserver {
 	CommandExecutorTaskFactory commandTaskFactory = null;
 	SynchronousTaskManager<?> taskManager = null;
 
+	Set<CyNode> selectedGenes;
+	Set<CyNode> selectedMutations;
+
 	// State variables
 	CyNetwork rinNetwork = null;
 	CyNetwork mergedNetwork = null;
@@ -52,6 +57,8 @@ public class StEMAPManager implements TaskObserver {
 	public StEMAPManager(final CyServiceRegistrar cyRegistrar) {
 		this.serviceRegistrar = cyRegistrar;
 		this.eventHelper = serviceRegistrar.getService(CyEventHelper.class);
+		selectedGenes = ConcurrentHashMap.newKeySet();
+		selectedMutations = ConcurrentHashMap.newKeySet();
 	}
 
 	public void readStructureMap(File mapFile) throws IOException {
@@ -83,7 +90,6 @@ public class StEMAPManager implements TaskObserver {
 		if (map == null) return null;
 		return map.getChimeraCommands();
 	}
-
 
 	public String getPrimaryChain(String chain) {
 		if (map == null) return null;
@@ -122,7 +128,27 @@ public class StEMAPManager implements TaskObserver {
 		lastResidues = null;
 		modelNumber = -1;
 		modelName = null;
+		selectedGenes.clear();
+		selectedMutations.clear();
 	}
+
+	public void selectGeneOrMutation(CyNode node, Boolean select) {
+		NodeType type = getNodeType(mergedNetwork, node);
+		if (type.equals(NodeType.GENE)) {
+			if (select)
+				selectedGenes.add(node);
+			else
+				selectedGenes.remove(node);
+		} else if (type.equals(NodeType.MUTATION) || type.equals(NodeType.MULTIMUTATION)) {
+			if (select)
+				selectedMutations.add(node);
+			else
+				selectedMutations.remove(node);
+		}
+	}
+
+	public Set<CyNode> getSelectedGenes() { return selectedGenes; }
+	public Set<CyNode> getSelectedMutations() { return selectedMutations; }
 
 	public NodeType getNodeType(CyNetwork network, CyNode node) {
 		String mutType = network.getRow(node).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
