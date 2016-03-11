@@ -117,7 +117,8 @@ public class MergeTask extends AbstractTask {
 		CySubNetwork cdtSubNetwork = cdtRootNetwork.addSubNetwork(cdtNetwork.getNodeList(), null);
 
 		cdtSubNetwork.getRow(cdtSubNetwork).set(CyNetwork.NAME, 
-		                                        rin.getSelectedValue()+" and "+cdt.getSelectedValue());
+		                                        ModelUtils.getName(rinNetwork, rinNetwork)+
+																						" and "+ModelUtils.getName(cdtNetwork, cdtNetwork));
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Getting significant edges");
 		for (CyEdge edge: cdtNetwork.getEdgeList()) {
@@ -360,6 +361,14 @@ public class MergeTask extends AbstractTask {
 		manager.getService(CyNetworkManager.class).addNetwork(cdtSubNetwork);
 		manager.getService(CyNetworkViewManager.class).addNetworkView(cdtNetworkView);
 		manager.setMergedNetwork(cdtSubNetwork);
+		manager.setMergedNetworkView(cdtNetworkView);
+
+		// Finally, write our SUIDs so we can restore things cleanly later
+		ModelUtils.createColumn(cdtSubNetwork.getDefaultNetworkTable(), StEMAPManager.RIN_NETWORK, Long.class);
+		ModelUtils.createColumn(cdtSubNetwork.getDefaultNetworkTable(), StEMAPManager.CDT_NETWORK, Long.class);
+		System.out.println("Writing "+rinNetwork.getSUID()+" into "+cdtSubNetwork);
+		cdtSubNetwork.getRow(cdtSubNetwork).set(StEMAPManager.RIN_NETWORK, rinNetwork.getSUID());
+		cdtSubNetwork.getRow(cdtSubNetwork).set(StEMAPManager.CDT_NETWORK, cdtNetwork.getSUID());
 	}
 
 	List<String> parseResidues(String residues) {

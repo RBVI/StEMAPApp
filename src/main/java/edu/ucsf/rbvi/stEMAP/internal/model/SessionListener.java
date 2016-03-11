@@ -13,10 +13,13 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import org.cytoscape.application.CyUserLog;
+import org.cytoscape.model.CyNetwork;
+import org.cytoscape.session.CySession;
 import org.cytoscape.session.events.SessionAboutToBeSavedEvent;
 import org.cytoscape.session.events.SessionAboutToBeSavedListener;
 import org.cytoscape.session.events.SessionLoadedEvent;
 import org.cytoscape.session.events.SessionLoadedListener;
+import org.cytoscape.view.model.CyNetworkView;
 
 public class SessionListener implements SessionAboutToBeSavedListener, SessionLoadedListener {
 	StEMAPManager manager;
@@ -44,6 +47,25 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 	}
 
 	public void handleEvent(SessionLoadedEvent e) {
+		// Get mergedNetwork
+		CySession session = e.getLoadedSession();
+		for (CyNetwork network: session.getNetworks()) {
+			if (network.getDefaultNetworkTable().getColumn(StEMAPManager.CDT_NETWORK) == null)
+				continue;
+			if (network.getRow(network).get(StEMAPManager.CDT_NETWORK, Long.class) == null)
+				continue;
+
+			// OK, we've found the merged network
+			manager.setMergedNetwork(network);
+			// Get mergedNetworkView
+			for (CyNetworkView view: session.getNetworkViews()) {
+				if (view.getModel().equals(network)) {
+					manager.setMergedNetworkView(view);
+				}
+			}
+			break;
+		}
+
 		Map<String, List<File>> appFileMap = e.getLoadedSession().getAppFileListMap();
 		if (appFileMap != null && appFileMap.containsKey("StEMAPApp")) {
 			List<File> fileList = appFileMap.get("StEMAPApp");

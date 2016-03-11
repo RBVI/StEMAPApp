@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -31,12 +32,15 @@ import org.cytoscape.work.TaskIterator;
 import org.cytoscape.work.TaskMonitor;
 import org.cytoscape.work.TaskObserver;
 
+import edu.ucsf.rbvi.stEMAP.internal.view.ResultsPanel;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils.NodeType;
 
 public class StEMAPManager implements TaskObserver { 
 	final CyServiceRegistrar serviceRegistrar;
 	final CyEventHelper eventHelper;
+	public static final String RIN_NETWORK = "RINNetwork.SUID";
+	public static final String CDT_NETWORK = "CDTNetwork.SUID";
 	CommandExecutorTaskFactory commandTaskFactory = null;
 	SynchronousTaskManager<?> taskManager = null;
 
@@ -46,10 +50,12 @@ public class StEMAPManager implements TaskObserver {
 	// State variables
 	CyNetwork rinNetwork = null;
 	CyNetwork mergedNetwork = null;
+	CyNetworkView mergedNetworkView = null;
 	StructureMap map = null;
 	String modelName = null;
 	int modelNumber = -1;
 	String lastResidues = null;
+	ResultsPanel currentResultsPanel = null;
 
 	File mapFile = null;
 	File pdbFile = null;
@@ -120,7 +126,21 @@ public class StEMAPManager implements TaskObserver {
 		mergedNetwork = network;
 	}
 
+	public void setMergedNetworkView(CyNetworkView networkView) {
+		mergedNetworkView = networkView;
+	}
+
 	public CyNetwork getMergedNetwork() { return mergedNetwork; }
+	public CyNetworkView getMergedNetworkView() { return mergedNetworkView; }
+
+	public ResultsPanel getResultsPanel() { return currentResultsPanel; }
+	public void setResultsPanel(ResultsPanel panel) { 
+		currentResultsPanel = panel; 
+		if (panel == null) {
+			selectedGenes.clear();
+			selectedMutations.clear();
+		}
+	}
 
 	public void reset() {
 		mergedNetwork = null;
@@ -149,6 +169,17 @@ public class StEMAPManager implements TaskObserver {
 
 	public Set<CyNode> getSelectedGenes() { return selectedGenes; }
 	public Set<CyNode> getSelectedMutations() { return selectedMutations; }
+
+	public void orderResidues(List<CyNode> mutations) {
+		List<String> nodeOrder = mergedNetwork.getRow(mergedNetwork).getList("__nodeOrder", String.class);
+		Collections.sort(mutations, new ClusterSort(nodeOrder));
+	}
+
+	public void orderGenes(List<CyNode> genes) {
+		// Get the order
+		List<String> attrOrder = mergedNetwork.getRow(mergedNetwork).getList("__arrayOrder", String.class);
+		Collections.sort(genes, new ClusterSort(attrOrder));
+	}
 
 	public NodeType getNodeType(CyNetwork network, CyNode node) {
 		String mutType = network.getRow(node).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
@@ -430,6 +461,24 @@ public class StEMAPManager implements TaskObserver {
 			}
 		}
 		return resChain;
+	}
+
+	private class ClusterSort implements Comparator<CyNode> {
+		final Map<String, Integer> orderMap;
+		public ClusterSort(List<String> order) {
+			orderMap = new HashMap<>();
+			for (int i = 0; i < order.size(); i++) {
+				orderMap.put(order.get(i), i);
+			}
+		}
+
+		public int compare(CyNode a, CyNode b) {
+			String nameA = ModelUtils.getName(mergedNetwork, a);
+			String nameB = ModelUtils.getName(mergedNetwork, b);
+			Integer orderA = orderMap.get(nameA);
+			Integer orderB = orderMap.get(nameB);
+			return orderA.compareTo(orderB);
+		}
 	}
 
 }

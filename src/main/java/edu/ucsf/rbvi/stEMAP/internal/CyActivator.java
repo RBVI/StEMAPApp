@@ -14,6 +14,7 @@ import static org.cytoscape.work.ServiceProperties.TITLE;
 import java.util.Properties;
 
 import org.cytoscape.application.CyApplicationManager;
+import org.cytoscape.application.swing.CytoPanelComponent2;
 import org.cytoscape.model.CyNetworkFactory;
 import org.cytoscape.model.CyNetworkManager;
 import org.cytoscape.model.subnetwork.CyRootNetworkManager;
@@ -37,6 +38,7 @@ import edu.ucsf.rbvi.stEMAP.internal.tasks.CreateRINTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.MergeTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ResetTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.SelectTaskFactory;
+import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.SplitResiduesTaskFactory;
 
 public class CyActivator extends AbstractCyActivator {
@@ -89,6 +91,11 @@ public class CyActivator extends AbstractCyActivator {
 			resetProps.setProperty(MENU_GRAVITY, "3.0");
 			resetProps.setProperty(ENABLE_FOR, "network");
 			registerService(bc, resetTaskFactory, NetworkTaskFactory.class, resetProps);
+		}
+		
+		{
+			ShowResultsPanelFactory resultsFactory = new ShowResultsPanelFactory(manager);
+			resultsFactory.register();
 		}
 
 		{
