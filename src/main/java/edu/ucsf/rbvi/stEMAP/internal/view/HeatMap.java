@@ -1,8 +1,11 @@
 package edu.ucsf.rbvi.stEMAP.internal.view;
 
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Shape;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,9 +15,11 @@ import java.util.Map;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.AxisLocation;
 import org.jfree.chart.axis.SymbolAxis;
+import org.jfree.chart.labels.StandardXYZToolTipGenerator;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYBlockRenderer;
+import org.jfree.data.xy.XYDataset;
 import org.jfree.data.xy.XYZDataset;
 import org.jfree.ui.RectangleInsets;
 
@@ -54,28 +59,33 @@ public class HeatMap
 	{
 		final PlotOrientation plotOrientation = PlotOrientation.VERTICAL;
 
-		final SymbolAxis xAxis = new SymbolAxis("Mutations", heatMapData.getColumnHeaders());
+		final SymbolAxis xAxis = new MySymbolAxis("Mutations", heatMapData.getColumnHeaders());
 		xAxis.setVisible(true);
 		xAxis.setAxisLineVisible(false);
 		xAxis.setTickMarksVisible(false);
 		xAxis.setTickLabelInsets(new RectangleInsets(0.0,0.0,0.0,0.0));
 		xAxis.setTickLabelPaint(Color.BLUE);
+		xAxis.setTickLabelFont(xAxis.getTickLabelFont().deriveFont(8.0f));
 		xAxis.setVerticalTickLabels(true);
 		xAxis.setLowerMargin(10.0);
 		xAxis.setUpperMargin(0.0);
 
-		final SymbolAxis yAxis = new SymbolAxis("Genes", heatMapData.getRowHeaders());
+		final SymbolAxis yAxis = new MySymbolAxis("Genes", heatMapData.getRowHeaders());
 		yAxis.setVisible(true);
 		yAxis.setAxisLineVisible(false);
 		yAxis.setTickMarksVisible(false);
 		yAxis.setTickLabelInsets(new RectangleInsets(0.0,0.0,0.0,0.0));
 		yAxis.setTickLabelPaint(Color.BLUE);
+		yAxis.setTickLabelFont(yAxis.getTickLabelFont().deriveFont(8.0f));
 		yAxis.setVerticalTickLabels(false);
 		yAxis.setLowerMargin(10.0);
 		yAxis.setUpperMargin(0.0);
 		yAxis.setInverted(true);
 
 		final XYBlockRenderer renderer = new XYBlockRenderer();
+
+		// Set up tooltips
+		// renderer.setBaseToolTipGenerator(new HeatmapToolTipGenerator(heatMapData));
 
 		Color[] colors = heatMapData.getColorMap();
 		double minValue = heatMapData.getMinimumZ();
@@ -107,6 +117,36 @@ public class HeatMap
 		chart.setTextAntiAlias(true);
 
 		return chart;
+
+	}
+
+	class HeatmapToolTipGenerator extends StandardXYZToolTipGenerator {
+		final XYZDataset xyzDataset;
+		final String[] seriesHeaders;
+		final String[] itemHeaders;
+
+		public HeatmapToolTipGenerator(HeatMapData hmData) {
+			super();
+			this.xyzDataset = hmData.getData();
+			this.seriesHeaders = hmData.getColumnHeaders();
+			this.itemHeaders = hmData.getRowHeaders();
+		}
+
+		@Override
+		public String generateToolTip(XYZDataset data, int series, int item) {
+			int x = (int)data.getXValue(series, item);
+			int y = (int)data.getYValue(series, item);
+			double z = data.getZValue(series, item);
+			String mutationLabel = seriesHeaders[x];
+			String geneLabel = itemHeaders[y];
+			return mutationLabel+" --> "+geneLabel+": "+z;
+		}
+
+		@Override
+		public String generateLabelString(XYDataset data, int series, int item) {
+			XYZDataset xyzData = (XYZDataset)data;
+			return generateToolTip(xyzData, series, item);
+		}
 
 	}
 

@@ -2,6 +2,7 @@ package edu.ucsf.rbvi.stEMAP.internal.view;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.image.BufferedImage;
 
 import java.util.ArrayList;
@@ -67,9 +68,12 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 			return;
 		}
 
-		int width = data.getColumnHeaders().length*10+200;
-		int height = data.getRowHeaders().length*10+200;
-		ChartPanel chartPanel = new ChartPanel(chart, width, height, width, height, width*4, height*4, true, true, true, true, true, true);
+		int width = data.getColumnHeaders().length*8+200;
+		int height = data.getRowHeaders().length*8+200;
+		// System.out.println("Chart size="+width+"x"+height);
+		ChartPanel chartPanel = new ChartPanel(chart, width, height, width, height, width*4, height*4, true, true, true, true, true, false);
+		chartPanel.setPreferredSize(new Dimension(width, height));
+		chartPanel.setSize(new Dimension(width, height));
 		JScrollPane scroller = new JScrollPane(chartPanel);
 		add(scroller, BorderLayout.CENTER);
 	}

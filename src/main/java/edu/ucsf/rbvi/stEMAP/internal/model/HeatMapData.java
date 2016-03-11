@@ -33,6 +33,8 @@ public class HeatMapData {
 	DefaultXYZDataset data;
 	double minZ = Double.MAX_VALUE;
 	double maxZ = Double.MIN_VALUE;
+	String[] rowHeaders = null;
+	String[] columnHeaders = null;
 
 	public HeatMapData(StEMAPManager manager, Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
 		this.manager = manager;
@@ -40,6 +42,8 @@ public class HeatMapData {
 		this.networkView = manager.getMergedNetworkView();
 
 		init(selectedGenes, selectedMutations);
+		rowHeaders = createRowHeaders();
+		columnHeaders = createColumnHeaders();
 	}
 
 	private void init(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
@@ -56,7 +60,7 @@ public class HeatMapData {
 		this.genes = new ArrayList<CyNode>(selectedGenes);
 		this.mutations = new ArrayList<CyNode>(selectedMutations);
 
-		System.out.println("HeatMapData after additions, have "+selectedGenes.size()+" genes and "+selectedMutations.size()+" mutations selected");
+		// System.out.println("HeatMapData after additions, have "+selectedGenes.size()+" genes and "+selectedMutations.size()+" mutations selected");
 
 		// Order the genes and mutations to have the same order
 		// as in the cluster
@@ -87,25 +91,20 @@ public class HeatMapData {
 						continue;
 					double weight = dWeight.doubleValue();
 					Color color = getColor(edges.get(0));
-					System.out.println("Color = "+color);
 					if (weight > maxZ) {
 						maxZ = weight;
 						colorMap[0] = color;
-						System.out.println("Color[max] = "+color);
 					} else if (weight < minZ) {
 						minZ = weight;
 						colorMap[2] = color;
-						System.out.println("Color[min] = "+color);
 					} else if (weight == 0.0) {
 						colorMap[1] = color;
 					}
 					minZ = Math.min(weight, minZ);
 					seriesData[2][z] = weight;
-					System.out.println("x = "+seriesData[0][z]+" y = "+seriesData[1][z]+" z = "+seriesData[2][z]);
 				}
 				data.addSeries(seriesLabel, seriesData);
 			}
-			System.out.println("seriesData[3]["+seriesData[0].length+"] range="+minZ+"-"+maxZ);
 		}
 
 	}
@@ -125,6 +124,10 @@ public class HeatMapData {
 	}
 
 	public String[] getColumnHeaders() {
+		return columnHeaders;
+	}
+
+	public String[] createColumnHeaders() {
 		String[] h = new String[mutations.size()];
 		for (int column = 0; column < h.length; column++) {
 			CyNode node = mutations.get(column);
@@ -134,6 +137,10 @@ public class HeatMapData {
 	}
 
 	public String[] getRowHeaders() {
+		return rowHeaders;
+	}
+
+	public String[] createRowHeaders() {
 		String[] h = new String[genes.size()];
 		for (int row = 0; row < h.length; row++) {
 			CyNode node = genes.get(row);

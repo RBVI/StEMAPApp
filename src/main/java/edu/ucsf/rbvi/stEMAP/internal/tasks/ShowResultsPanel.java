@@ -9,7 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import org.cytoscape.application.swing.CytoPanel;
 import org.cytoscape.application.swing.CytoPanelComponent;
+import org.cytoscape.application.swing.CytoPanelName;
+import org.cytoscape.application.swing.CytoPanelState;
+import org.cytoscape.application.swing.CySwingApplication;
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNode;
 import org.cytoscape.view.model.CyNetworkView;
@@ -31,16 +35,25 @@ public class ShowResultsPanel extends AbstractTask {
 	}
 
 	public void run(TaskMonitor taskMonitor) {
+		CySwingApplication swingApplication = manager.getService(CySwingApplication.class);
+		CytoPanel cytoPanel = swingApplication.getCytoPanel(CytoPanelName.EAST);
+
 		if (show) {
 			factory.unregister();
 			ResultsPanel panel = new ResultsPanel(manager);
 			manager.registerService(panel, CytoPanelComponent.class, new Properties());
 			manager.setResultsPanel(panel);
+			if (cytoPanel.getState() == CytoPanelState.HIDE)
+				cytoPanel.setState(CytoPanelState.DOCK);
+
 			factory.register();
 		} else {
 			factory.unregister();
 			manager.unregisterService(manager.getResultsPanel(), CytoPanelComponent.class);
 			manager.setResultsPanel(null);
+			if (cytoPanel.getCytoPanelComponentCount() == 0)
+				cytoPanel.setState(CytoPanelState.HIDE);
+
 			factory.register();
 		}
 	}
