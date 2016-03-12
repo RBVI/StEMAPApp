@@ -3,6 +3,7 @@ package edu.ucsf.rbvi.stEMAP.internal.view;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 
 import java.util.ArrayList;
@@ -71,9 +72,10 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 		int width = data.getColumnHeaders().length*8+200;
 		int height = data.getRowHeaders().length*8+200;
 		// System.out.println("Chart size="+width+"x"+height);
-		ChartPanel chartPanel = new ChartPanel(chart, width, height, width, height, width*4, height*4, true, true, true, true, true, false);
+		ChartPanel chartPanel = new MyChartPanel(chart, width, height);
 		chartPanel.setPreferredSize(new Dimension(width, height));
 		chartPanel.setSize(new Dimension(width, height));
+		chartPanel.addChartMouseListener(new HeatMapToolTipListener(chartPanel, data));
 		JScrollPane scroller = new JScrollPane(chartPanel);
 		add(scroller, BorderLayout.CENTER);
 	}
@@ -94,5 +96,22 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 
 	@Override
 	public String getTitle() { return "StEMAP HeatMap"; }
+
+	class MyChartPanel extends ChartPanel {
+		String tt = null;
+		public MyChartPanel(JFreeChart chart, int width, int height) {
+			super(chart, width, height, width, height, width*4, height*4, true, true, true, true, true, true);
+		}
+
+		@Override
+		public String getToolTipText(MouseEvent e) {
+			return tt;
+		}
+
+		@Override
+		public void setToolTipText(String text) {
+			tt = text;
+		}
+	}
 
 }
