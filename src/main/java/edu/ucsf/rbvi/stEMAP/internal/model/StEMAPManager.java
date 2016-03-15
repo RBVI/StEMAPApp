@@ -202,8 +202,9 @@ public class StEMAPManager implements TaskObserver {
 			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 			if (mutType == null || mutType.length() == 0) {
 				String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
-				if (pdb == null || pdb.length() == 0)
+				if (pdb == null || pdb.length() == 0) {
 					geneNodes.add(neighbor);
+				}
 			}
 		}
 		return geneNodes;

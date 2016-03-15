@@ -44,18 +44,28 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
 		setLayout(new BorderLayout());
-		initialize();
+		JScrollPane scroller = initialize();
+		if (scroller != null)
+			add(scroller, BorderLayout.CENTER);
 	}
 
-	private void initialize() {
+	public void update() {
+		JScrollPane scroller = initialize();
+		if (scroller != null) {
+			removeAll();
+			add(scroller, BorderLayout.CENTER);
+		}
+	}
+
+	private JScrollPane initialize() {
 		if (network == null)
-			return;
+			return null;
 
 		// Get the currently selected nodes
-		List<CyNode> selectedNodes = CyTableUtil.getNodesInState(network, CyNetwork.SELECTED, true);
-		for (CyNode node: selectedNodes) {
-			manager.selectGeneOrMutation(node, Boolean.TRUE);
-		}
+		// List<CyNode> selectedNodes = CyTableUtil.getNodesInState(network, CyNetwork.SELECTED, true);
+		// for (CyNode node: selectedNodes) {
+		// 	manager.selectGeneOrMutation(node, Boolean.TRUE);
+		// }
 
 		HeatMapData data = new HeatMapData(manager, new HashSet<CyNode>(manager.getSelectedGenes()),	
 		                                            new HashSet<CyNode>(manager.getSelectedMutations()));
@@ -66,7 +76,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 			chart = heatMap.createHeatMap();
 		} catch (Exception e) {
 			e.printStackTrace();
-			return;
+			return null;
 		}
 
 		int width = data.getColumnHeaders().length*8+200;
@@ -77,7 +87,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 		chartPanel.setSize(new Dimension(width, height));
 		chartPanel.addChartMouseListener(new HeatMapToolTipListener(chartPanel, data));
 		JScrollPane scroller = new JScrollPane(chartPanel);
-		add(scroller, BorderLayout.CENTER);
+		return scroller;
 	}
 
 	@Override

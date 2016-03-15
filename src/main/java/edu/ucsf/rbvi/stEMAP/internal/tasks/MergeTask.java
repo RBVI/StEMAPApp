@@ -145,9 +145,9 @@ public class MergeTask extends AbstractTask {
 			String residue = cdtSubNetwork.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			if (residue != null && residue.length() > 0) {
 				if (residue.indexOf("-") == -1 &&
-						residue.indexOf(",") == -1)
+						residue.indexOf(",") == -1) {
 					addNodeToMap(residueMap, residue, node);
-				else
+				} else
 					multipleResidues.add(node);
 			} else {
 				targetNodes.add(node);
@@ -366,7 +366,6 @@ public class MergeTask extends AbstractTask {
 		// Finally, write our SUIDs so we can restore things cleanly later
 		ModelUtils.createColumn(cdtSubNetwork.getDefaultNetworkTable(), StEMAPManager.RIN_NETWORK, Long.class);
 		ModelUtils.createColumn(cdtSubNetwork.getDefaultNetworkTable(), StEMAPManager.CDT_NETWORK, Long.class);
-		System.out.println("Writing "+rinNetwork.getSUID()+" into "+cdtSubNetwork);
 		cdtSubNetwork.getRow(cdtSubNetwork).set(StEMAPManager.RIN_NETWORK, rinNetwork.getSUID());
 		cdtSubNetwork.getRow(cdtSubNetwork).set(StEMAPManager.CDT_NETWORK, cdtNetwork.getSUID());
 	}

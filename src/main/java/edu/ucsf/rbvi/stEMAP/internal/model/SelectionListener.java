@@ -42,5 +42,7 @@ public class SelectionListener implements RowsSetListener {
 			CyNode node = mergedNetwork.getNode(row.get(CyIdentifiable.SUID, Long.class));
 			manager.selectGeneOrMutation(node, selected);
 		}
+		if (manager.getResultsPanel() != null)
+			manager.getResultsPanel().update();
 	}
 }

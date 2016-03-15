@@ -59,7 +59,7 @@ public class HeatMap
 	{
 		final PlotOrientation plotOrientation = PlotOrientation.VERTICAL;
 
-		final SymbolAxis xAxis = new MySymbolAxis("Mutations", heatMapData.getColumnHeaders());
+		final SymbolAxis xAxis = new MySymbolAxis("Genes", heatMapData.getColumnHeaders());
 		xAxis.setVisible(true);
 		xAxis.setAxisLineVisible(false);
 		xAxis.setTickMarksVisible(false);
@@ -70,7 +70,7 @@ public class HeatMap
 		xAxis.setLowerMargin(10.0);
 		xAxis.setUpperMargin(0.0);
 
-		final SymbolAxis yAxis = new MySymbolAxis("Genes", heatMapData.getRowHeaders());
+		final SymbolAxis yAxis = new MySymbolAxis("Mutations", heatMapData.getRowHeaders());
 		yAxis.setVisible(true);
 		yAxis.setAxisLineVisible(false);
 		yAxis.setTickMarksVisible(false);

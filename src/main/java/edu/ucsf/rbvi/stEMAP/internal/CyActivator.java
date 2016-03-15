@@ -17,6 +17,7 @@ import org.cytoscape.application.CyApplicationManager;
 import org.cytoscape.application.swing.CytoPanelComponent2;
 import org.cytoscape.model.CyNetworkFactory;
 import org.cytoscape.model.CyNetworkManager;
+import org.cytoscape.model.events.RowsSetListener;
 import org.cytoscape.model.subnetwork.CyRootNetworkManager;
 import org.cytoscape.view.model.CyNetworkViewManager;
 import org.cytoscape.task.NetworkTaskFactory;
@@ -32,6 +33,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
+import edu.ucsf.rbvi.stEMAP.internal.model.SelectionListener;
 import edu.ucsf.rbvi.stEMAP.internal.model.SessionListener;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.BuildMergedNetworkTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.CreateRINTaskFactory;
@@ -40,6 +42,7 @@ import edu.ucsf.rbvi.stEMAP.internal.tasks.ResetTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.SelectTaskFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.SplitResiduesTaskFactory;
+import edu.ucsf.rbvi.stEMAP.internal.tasks.UpdateResultsPanelFactory;
 
 public class CyActivator extends AbstractCyActivator {
 
@@ -97,6 +100,20 @@ public class CyActivator extends AbstractCyActivator {
 			ShowResultsPanelFactory resultsFactory = new ShowResultsPanelFactory(manager);
 			resultsFactory.register();
 		}
+		
+		/* This probably isn't needed anymore
+		{
+			Properties updateResultsPanelProps = new Properties();
+			UpdateResultsPanelFactory updateResultsPanelTaskFactory = 
+							new UpdateResultsPanelFactory(manager);
+
+			updateResultsPanelProps.setProperty(PREFERRED_MENU, "Apps.stEMAP");
+			updateResultsPanelProps.setProperty(TITLE, "Update results panel");
+			updateResultsPanelProps.setProperty(MENU_GRAVITY, "5.0");
+			updateResultsPanelProps.setProperty(ENABLE_FOR, "networkAndView");
+			registerService(bc, updateResultsPanelTaskFactory, NetworkViewTaskFactory.class, updateResultsPanelProps);
+		}
+		*/
 
 		{
 			Properties splitResiduesProps = new Properties();
@@ -135,6 +152,12 @@ public class CyActivator extends AbstractCyActivator {
 			SessionListener listener = new SessionListener(manager);
 			registerService(bc, listener, SessionAboutToBeSavedListener.class, props);
 			registerService(bc, listener, SessionLoadedListener.class, props);
+		}
+		
+		{
+			Properties props = new Properties();
+			SelectionListener listener = new SelectionListener(manager);
+			registerService(bc, listener, RowsSetListener.class, props);
 		}
 	}
 }

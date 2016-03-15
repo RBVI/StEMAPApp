@@ -47,20 +47,23 @@ public class HeatMapData {
 	}
 
 	private void init(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
-		// Add connections
-		// For each selected Gene, add the connected mutations
-		for (CyNode node: selectedGenes) {
-			selectedMutations.addAll(manager.getResidueNodes(network, node));
-		}
-		// For each mutation, add the connected Genes
-		for (CyNode node: selectedMutations) {
-			selectedGenes.addAll(manager.getGeneNodes(network, node));
-		}
-
 		this.genes = new ArrayList<CyNode>(selectedGenes);
 		this.mutations = new ArrayList<CyNode>(selectedMutations);
 
-		// System.out.println("HeatMapData after additions, have "+selectedGenes.size()+" genes and "+selectedMutations.size()+" mutations selected");
+		// Add connections
+		// For each selected Gene, add the connected mutations
+		for (CyNode node: selectedGenes) {
+			mutations.addAll(manager.getResidueNodes(network, node));
+		}
+		// For each mutation, add the connected Genes
+		for (CyNode node: selectedMutations) {
+			genes.addAll(manager.getGeneNodes(network, node));
+		}
+
+		// this.genes = new ArrayList<CyNode>(selectedGenes);
+		// this.mutations = new ArrayList<CyNode>(selectedMutations);
+
+		// System.out.println("HeatMapData after additions, have "+genes.size()+" genes and "+mutations.size()+" mutations selected");
 
 		// Order the genes and mutations to have the same order
 		// as in the cluster
@@ -75,15 +78,15 @@ public class HeatMapData {
 		colorMap[1] = Color.WHITE;
 		colorMap[3] = Color.GRAY;
 
-		for (int column = 0; column < mutations.size(); column++) {
-			CyNode columnNode = mutations.get(column);
+		for (int column = 0; column < genes.size(); column++) {
+			CyNode columnNode = genes.get(column);
 			String seriesLabel = ModelUtils.getName(manager.getMergedNetwork(), columnNode);
-			for (int row = 0; row < genes.size(); row++) {
-				int z = genes.size()*column+row;
+			for (int row = 0; row < mutations.size(); row++) {
+				int z = mutations.size()*column+row;
 				seriesData[0][z] = column;
 				seriesData[1][z] = row;
 				seriesData[2][z] = Double.NaN;
-				CyNode rowNode = genes.get(row);
+				CyNode rowNode = mutations.get(row);
 				List<CyEdge> edges = network.getConnectingEdgeList(columnNode, rowNode, CyEdge.Type.ANY);
 				if (edges.size() > 0) {
 					Double dWeight = network.getRow(edges.get(0)).get("weight", Double.class);
@@ -128,9 +131,9 @@ public class HeatMapData {
 	}
 
 	public String[] createColumnHeaders() {
-		String[] h = new String[mutations.size()];
+		String[] h = new String[genes.size()];
 		for (int column = 0; column < h.length; column++) {
-			CyNode node = mutations.get(column);
+			CyNode node = genes.get(column);
 			h[column] = ModelUtils.getName(network, node);
 		}
 		return h;
@@ -141,9 +144,9 @@ public class HeatMapData {
 	}
 
 	public String[] createRowHeaders() {
-		String[] h = new String[genes.size()];
+		String[] h = new String[mutations.size()];
 		for (int row = 0; row < h.length; row++) {
-			CyNode node = genes.get(row);
+			CyNode node = mutations.get(row);
 			h[row] = ModelUtils.getName(network, node);
 		}
 		return h;
