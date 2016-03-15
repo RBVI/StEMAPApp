@@ -66,9 +66,16 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 		// for (CyNode node: selectedNodes) {
 		// 	manager.selectGeneOrMutation(node, Boolean.TRUE);
 		// }
-
-		HeatMapData data = new HeatMapData(manager, new HashSet<CyNode>(manager.getSelectedGenes()),	
-		                                            new HashSet<CyNode>(manager.getSelectedMutations()));
+		
+		HeatMapData data;
+		try {
+			data	= new HeatMapData(manager, new HashSet<CyNode>(manager.getSelectedGenes()),	
+		                                   new HashSet<CyNode>(manager.getSelectedMutations()));
+		} catch (IllegalArgumentException e) {
+			JLabel label = new JLabel(e.getMessage());
+			JScrollPane scroller = new JScrollPane(label);
+			return scroller;
+		}
 		// Create our initial chart
 		HeatMap heatMap = new HeatMap(manager, data);
 		JFreeChart chart = null;

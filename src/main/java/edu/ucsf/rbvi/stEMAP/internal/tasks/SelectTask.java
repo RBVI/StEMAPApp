@@ -46,6 +46,7 @@ public class SelectTask extends AbstractTask {
 		//	     o Show spheres on structure
 		Map<String, Color> colorMap = new HashMap<>();
 		List<String> residues = new ArrayList<>();
+		List<CyNode> nodesToSelect = new ArrayList<>();
 		for (CyNode node: nodeList) {
 			NodeType type = manager.getNodeType(network, node);
 			switch (type) {
@@ -53,7 +54,7 @@ public class SelectTask extends AbstractTask {
 				{
 					List<CyNode> genes = manager.getGeneNodes(network, node);
 					genes.add(node);
-					manager.selectNodes(network, genes);
+					nodesToSelect.addAll(genes);
 					residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
 				}
 				break;
@@ -61,8 +62,8 @@ public class SelectTask extends AbstractTask {
 				{
 					List<CyNode> genes = manager.getGeneNodes(network, node);
 					manager.selectNodes(network, genes);
-					List<CyNode> residueNodes = manager.getResidueNodes(network, node);
-					manager.selectNodes(network, residueNodes);
+					List<CyNode> residueNodes = manager.getResidueNodes(network, node, true);
+					nodesToSelect.addAll(residueNodes);
 					residues.addAll(manager.getResidues(network, residueNodes));
 				}
 				break;
@@ -79,7 +80,7 @@ public class SelectTask extends AbstractTask {
 				break;
 			case STRUCTURE:
 				{
-					manager.selectNodes(network, Collections.singletonList(node));
+					nodesToSelect.add(node);
 					residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
 				}
 				break;
@@ -90,5 +91,6 @@ public class SelectTask extends AbstractTask {
 		if (colorMap.size() > 0)
 			manager.colorSpheres(colorMap);
 
+		manager.selectNodes(network, nodesToSelect);
 	}
 }

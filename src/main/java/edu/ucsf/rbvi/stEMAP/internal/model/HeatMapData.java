@@ -53,7 +53,7 @@ public class HeatMapData {
 		// Add connections
 		// For each selected Gene, add the connected mutations
 		for (CyNode node: selectedGenes) {
-			mutations.addAll(manager.getResidueNodes(network, node));
+			mutations.addAll(manager.getResidueNodes(network, node, false));
 		}
 		// For each mutation, add the connected Genes
 		for (CyNode node: selectedMutations) {
@@ -64,6 +64,10 @@ public class HeatMapData {
 		// this.mutations = new ArrayList<CyNode>(selectedMutations);
 
 		// System.out.println("HeatMapData after additions, have "+genes.size()+" genes and "+mutations.size()+" mutations selected");
+		if (genes.size() > 1000)
+			throw new IllegalArgumentException("Too many genes ("+genes.size()+") to display");
+		if (mutations.size() > 1000)
+			throw new IllegalArgumentException("Too many mutations ("+mutations.size()+") to display");
 
 		// Order the genes and mutations to have the same order
 		// as in the cluster

@@ -250,16 +250,16 @@ public class StEMAPManager implements TaskObserver {
 		return colorMap;
 	}
 
-	public List<CyNode> getResidueNodes(CyNetwork net, CyNode node) {
+	public List<CyNode> getResidueNodes(CyNetwork net, CyNode node, boolean findMultiples) {
 		List<CyNode> residueNodes = new ArrayList<>();
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
 			String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
 			if (pdb != null && pdb.length() > 0) {
 				residueNodes.add(neighbor);
-			} else {
+			} else if (findMultiples) {
 				String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 				if (mutType != null && (mutType.equals("del") || mutType.equals("multiple"))) {
-					List<CyNode> rn = getResidueNodes(net, neighbor);
+					List<CyNode> rn = getResidueNodes(net, neighbor, true);
 					if (rn != null) residueNodes.addAll(rn);
 				}
 			}
