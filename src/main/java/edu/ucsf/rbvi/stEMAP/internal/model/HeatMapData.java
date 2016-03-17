@@ -50,14 +50,18 @@ public class HeatMapData {
 		this.genes = new ArrayList<CyNode>(selectedGenes);
 		this.mutations = new ArrayList<CyNode>(selectedMutations);
 
-		// Add connections
-		// For each selected Gene, add the connected mutations
-		for (CyNode node: selectedGenes) {
-			mutations.addAll(manager.getResidueNodes(network, node, false));
-		}
-		// For each mutation, add the connected Genes
-		for (CyNode node: selectedMutations) {
-			genes.addAll(manager.getGeneNodes(network, node));
+		// If we already have both genes and mutations, we probably
+		// don't want to add connections
+		if (selectedGenes.size() == 0 || selectedMutations.size() == 0) {
+			// Add connections
+			// For each selected Gene, add the connected mutations
+			for (CyNode node: selectedGenes) {
+				mutations.addAll(manager.getResidueNodes(network, node, false));
+			}
+			// For each mutation, add the connected Genes
+			for (CyNode node: selectedMutations) {
+				genes.addAll(manager.getGeneNodes(network, node));
+			}
 		}
 
 		// this.genes = new ArrayList<CyNode>(selectedGenes);
