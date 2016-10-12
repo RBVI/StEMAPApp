@@ -254,14 +254,16 @@ public class StEMAPManager implements TaskObserver {
 		List<CyNode> residueNodes = new ArrayList<>();
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
 			String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
+			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 			if (pdb != null && pdb.length() > 0) {
 				residueNodes.add(neighbor);
 			} else if (findMultiples) {
-				String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 				if (mutType != null && (mutType.equals("del") || mutType.equals("multiple"))) {
 					List<CyNode> rn = getResidueNodes(net, neighbor, true);
 					if (rn != null) residueNodes.addAll(rn);
 				}
+			} else if (mutType != null) {
+				residueNodes.add(neighbor);
 			}
 		}
 		return residueNodes;
@@ -302,10 +304,16 @@ public class StEMAPManager implements TaskObserver {
 		args.put("showDialog", "true");
 		executeCommand("structureViz", "open", args, this);
 
-		try {
-			// Wait for things to process
-			Thread.sleep(500);
-		} catch (Exception e) {}
+		while (modelNumber == -1) {
+			try {
+				// Wait for things to process
+				Thread.sleep(500);
+			} catch (Exception e) {}
+		}
+
+		if (modelNumber == -2) {
+			return;
+		}
 
 		if (extraCommands != null) {
 			args = new HashMap<>();
@@ -375,13 +383,13 @@ public class StEMAPManager implements TaskObserver {
 
 		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
-		chimeraCommand("sel "+lastResidues);
+		// chimeraCommand("sel "+lastResidues);
 		// System.out.println("chimera: sel "+lastResidues);
 
 		// Change to sphere
-		chimeraCommand("disp sel");
+		chimeraCommand("disp "+lastResidues);
 		// System.out.println("Sending command: disp sel");
-		chimeraCommand("repr sphere sel");
+		chimeraCommand("repr sphere "+lastResidues);
 		// System.out.println("Sending command: repr sphere sel");
 	}
 
@@ -438,29 +446,38 @@ public class StEMAPManager implements TaskObserver {
 		serviceRegistrar.unregisterService(service, serviceClass);
 	}
 
-	public void allFinished(FinishStatus finishStatus) {}
+	public void allFinished(FinishStatus finishStatus) {
+	}
 
 	public void taskFinished(ObservableTask task) {
 		String models = task.getResults(String.class);
 		int offset = models.indexOf(' ');
-		String model = models.substring(1, offset);
-		modelName = new String(models.substring(offset+1, models.length()-1));
+		if (offset >= 0) {
+			String model = models.substring(1, offset);
+			modelName = new String(models.substring(offset+1, models.length()-1));
 
-		try {
-			modelNumber = Integer.parseInt(model);
- 		} catch (Exception e) {}
+			try {
+				modelNumber = Integer.parseInt(model);
+ 			} catch (Exception e) {}
+		} else {
+			modelNumber = -2;
+		}
 	}
 
 	private String addChains(String resChain) {
 		String [] rc = resChain.split("[.]");
 		String chain = rc[1];
 		String residue = rc[0];
+		// System.out.println("Looking for duplicate chain for '"+chain+"'");
 		List<String> chains = getDuplicateChains(chain); // Get the chain aliases
+		// System.out.println("Got "+chains.size()+" chains: ");
 		if (chains != null && chains.size() > 0) {
 			for (String ch: chains) {
+				// System.out.println("...chain "+ch);
 				resChain += ","+residue+"."+ch;
 			}
 		}
+		// System.out.println("addChains returning: "+resChain);
 		return resChain;
 	}
 

@@ -56,11 +56,19 @@ public class HeatMapData {
 			// Add connections
 			// For each selected Gene, add the connected mutations
 			for (CyNode node: selectedGenes) {
-				mutations.addAll(manager.getResidueNodes(network, node, false));
+				for (CyNode resNode: manager.getResidueNodes(network, node, false)) {
+					if (!mutations.contains(resNode))
+						mutations.add(resNode);
+				}
 			}
 			// For each mutation, add the connected Genes
 			for (CyNode node: selectedMutations) {
-				genes.addAll(manager.getGeneNodes(network, node));
+				for (CyNode gNode: manager.getGeneNodes(network, node)) {
+					if (!genes.contains(gNode))
+						genes.add(gNode);
+				}
+
+				// genes.addAll(manager.getGeneNodes(network, node));
 			}
 		}
 

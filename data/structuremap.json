@@ -2,15 +2,16 @@
 	"PDBId": "1id3"
 	"UsePDBFile": true
 	"PDBFile": "1id3_withTails_H4chainA_H3chainB.pdb"
-	"ChimeraCommands": "turn x 90; focus"
+	"ChimeraCommands": "turn x 90; focus; select solvent|ions; ~disp sel; select #0:.A,.B,.E,.F; rainbow chain sel; select invert; color dark gray sel; select nucleic acid; surface sel; transparency 70,s; select clear"
+
 	"RINParameters": {
 		"includeConnectivity": true
 		"includeHBonds": false
 		"includeContacts": false
 	}
 	"ChainMap": {
-			"H4": "A",
-			"H3": "B"
+			"H4": ["A","F"],
+			"H3": ["B","E"]
 	}
 	"PositiveCutoff": 2.0
 	"NegativeCutoff": -3.0

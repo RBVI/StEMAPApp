@@ -16,12 +16,12 @@ import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 
 public class ModelUtils {
 	// Column names
-	public static final String GENE_COLUMN = "StGene";
+	// public static final String GENE_COLUMN = "StGene";
 	public static final String CHAIN_COLUMN = "Chain";
 	public static final String MUT_COLUMN = "Mutation";
 	public static final String MUT_TYPE_COLUMN = "MutationType";
 	public static final String RESIDUE_COLUMN = "Residues";
-	public static final String ID_COLUMN = "ModID";
+	// public static final String ID_COLUMN = "ModID";
 	public static final String PDB_COLUMN = "pdbFileName";
 
 	// Mutation types
@@ -39,11 +39,11 @@ public class ModelUtils {
 	public static void splitResidues(TaskMonitor taskMonitor, 
 	                                 StEMAPManager manager, CyNetwork network) {
 		CyTable nodeTable = network.getDefaultNodeTable();
-		createColumn(nodeTable, GENE_COLUMN, String.class);
+		// createColumn(nodeTable, GENE_COLUMN, String.class);
 		createColumn(nodeTable, CHAIN_COLUMN, String.class);
 		createColumn(nodeTable, MUT_COLUMN, String.class);
 		createColumn(nodeTable, MUT_TYPE_COLUMN, String.class);
-		createColumn(nodeTable, ID_COLUMN, String.class); // Should this be a list?
+		// createColumn(nodeTable, ID_COLUMN, String.class); // Should this be a list?
 		createColumn(nodeTable, RESIDUE_COLUMN, String.class); // Should this be a list?
 
 		int count = 0;
@@ -57,12 +57,23 @@ public class ModelUtils {
 			if (name.indexOf("|") < 0)
 				continue;
 			String[] split1 = name.split("[|]"); // Split on space and bar
+			// System.out.println("Residue: "+name+".  Chain = "+split1[0]+", Mutation = "+split1[1]);
 			if (split1.length != 2) {
 				taskMonitor.showMessage(TaskMonitor.Level.WARN, "Malformed identifier: '"+name+"'?  Can't find '|'.");
 				// System.out.println("split1.length = "+split1.length);
 				// System.out.println("split1[0] = "+split1[0]);
 				continue;
 			}
+			// split1[0] has the chain
+			// split1[1] has the residue and mutation
+			network.getRow(node).set(CHAIN_COLUMN, split1[0]);
+			network.getRow(node).set(MUT_COLUMN, split1[1]);
+			String res = ModelUtils.formatResidues(split1[1], network, node, MUT_TYPE_COLUMN);
+			// System.out.println("res = "+res);
+			// System.out.println("Primary chain = "+manager.getPrimaryChain(split1[0]));
+			network.getRow(node).set(RESIDUE_COLUMN, pdbId+"#"+res+"."+manager.getPrimaryChain(split1[0]));
+			
+			/*
 			// split1[0] has the chain and gene information.  Split it further on space
 			String[] split2 = split1[0].split(" ");
 			if (split2.length != 3) {
@@ -78,6 +89,7 @@ public class ModelUtils {
 			network.getRow(node).set(ID_COLUMN, chRes[1]);
 			String res = ModelUtils.formatResidues(split1[1], network, node, MUT_TYPE_COLUMN);
 			network.getRow(node).set(RESIDUE_COLUMN, pdbId+"#"+res+"."+manager.getPrimaryChain(chRes[0]));
+			*/
 			// System.out.println("Created columns for "+name);
 			count++;
 		}
@@ -94,10 +106,10 @@ public class ModelUtils {
 	}
 
 	public static String formatResidues(String mutation, CyNetwork network, CyNode node, String typeColumn) {
-		if (mutation.indexOf("del") > 0) {
+		if (mutation.startsWith("del")) {
 			// We have a deletion range -- return it
 			network.getRow(node).set(typeColumn, DELETION);
-			return mutation.substring(5,mutation.length()-1);
+			return mutation.substring(4,mutation.length());
 		}
 
 		// Otherwise, the first character is the residue type and the last character is the mutation
