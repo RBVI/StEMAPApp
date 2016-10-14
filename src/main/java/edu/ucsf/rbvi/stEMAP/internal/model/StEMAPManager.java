@@ -360,11 +360,24 @@ public class StEMAPManager implements TaskObserver {
 		chimeraCommand(command);
 	}
 
+	/*
 	public String colorResidue(String residue, Color color) {
 		double r = (double)color.getRed()/(double)255;
 		double g = (double)color.getGreen()/(double)255;
 		double b = (double)color.getBlue()/(double)255;
 		String command = "color "+r+","+g+","+b+",a #"+modelNumber+":"+residue;
+		// System.out.println("Command: "+command);
+		return command;
+	}
+	*/
+	public String colorResidue(String residue, Color color) {
+		// Residue is the Cytoscape-style string of the form "nnn.a,nnn.b,...".  We need to convert
+		// it to a ChimeraX list
+		String xResidues = convertResiduesToX(residue);
+		int r = color.getRed();
+		int g = color.getGreen();
+		int b = color.getBlue();
+		String command = "color "+xResidues+" rgb("+r+","+g+","+b+") atoms";
 		// System.out.println("Command: "+command);
 		return command;
 	}
@@ -375,11 +388,15 @@ public class StEMAPManager implements TaskObserver {
 			chimeraCommand("~disp "+lastResidues);
 		}
 		// Make it a comma separated list
-		String command = "#"+modelNumber+":";
-		for (String r: residues)
-			command += r+",";
+		String command = null;
+		for (String r: residues) {
+			if (command == null)
+				command = r;
+			else
+				command += ","+r;
+		}
 
-		lastResidues = command.substring(0, command.length()-1);
+		lastResidues = convertResiduesToX(command);
 
 		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
@@ -389,8 +406,22 @@ public class StEMAPManager implements TaskObserver {
 		// Change to sphere
 		chimeraCommand("disp "+lastResidues);
 		// System.out.println("Sending command: disp sel");
-		chimeraCommand("repr sphere "+lastResidues);
+		chimeraCommand("style "+lastResidues+" sphere");
 		// System.out.println("Sending command: repr sphere sel");
+	}
+
+	public String convertResiduesToX(String residue) {
+		String[] resArray = residue.split(",");
+		String xResidues = null;
+		for (String res: resArray) {
+			String[] resChain = res.split("\\.");
+			if (xResidues == null) {
+				xResidues = "#"+modelNumber+"/"+resChain[1]+":"+resChain[0];
+			} else {
+				xResidues += "|#"+modelNumber+"/"+resChain[1]+":"+resChain[0];
+			}
+		}
+		return xResidues;
 	}
 
 	public void chimeraCommand(String command) {
