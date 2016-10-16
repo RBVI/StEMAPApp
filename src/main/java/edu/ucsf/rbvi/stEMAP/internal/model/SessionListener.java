@@ -20,6 +20,11 @@ import org.cytoscape.session.events.SessionAboutToBeSavedListener;
 import org.cytoscape.session.events.SessionLoadedEvent;
 import org.cytoscape.session.events.SessionLoadedListener;
 import org.cytoscape.view.model.CyNetworkView;
+import org.cytoscape.work.SynchronousTaskManager;
+import org.cytoscape.work.Task;
+import org.cytoscape.work.TaskIterator;
+
+import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 
 public class SessionListener implements SessionAboutToBeSavedListener, SessionLoadedListener {
 	StEMAPManager manager;
@@ -89,6 +94,20 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 				manager.loadPDB(manager.getPDB(), manager.getChimeraCommands());
 			}
 		}
+
+		manager.setResultsPanel(null);
+
+		// Finally, open up our results panel
+		ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
+		showResults.unregister();
+		showResults.register();
+	
+		SynchronousTaskManager taskManager = manager.getService(SynchronousTaskManager.class);
+		TaskIterator ti = showResults.createTaskIterator(manager.getMergedNetworkView());
+		try {
+			while (ti.hasNext())
+				ti.next().run(null);
+		} catch(Exception tie) { }
 	}
 
 	private void copyFile(File from, File to) throws IOException {

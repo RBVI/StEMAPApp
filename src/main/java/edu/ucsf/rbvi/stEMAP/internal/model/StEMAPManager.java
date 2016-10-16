@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.cytoscape.command.CommandExecutorTaskFactory;
@@ -56,6 +57,9 @@ public class StEMAPManager implements TaskObserver {
 	int modelNumber = -1;
 	String lastResidues = null;
 	ResultsPanel currentResultsPanel = null;
+
+	boolean autoAnnotate = false;
+	boolean ignoreMultiples = false;
 
 	File mapFile = null;
 	File pdbFile = null;
@@ -155,15 +159,20 @@ public class StEMAPManager implements TaskObserver {
 	public void selectGeneOrMutation(CyNode node, Boolean select) {
 		NodeType type = getNodeType(mergedNetwork, node);
 		if (type.equals(NodeType.GENE)) {
-			if (select)
+			if (select) {
 				selectedGenes.add(node);
-			else
+			} else {
 				selectedGenes.remove(node);
+			}
 		} else if (type.equals(NodeType.MUTATION) || type.equals(NodeType.MULTIMUTATION)) {
 			if (select)
 				selectedMutations.add(node);
 			else
 				selectedMutations.remove(node);
+		}
+
+		if (autoAnnotate && type.equals(NodeType.GENE)) {
+			updateChimera();
 		}
 	}
 
@@ -242,6 +251,11 @@ public class StEMAPManager implements TaskObserver {
 			String pdb = net.getRow(resNode).get(ModelUtils.PDB_COLUMN, String.class);
 			if (pdb != null && pdb.length() > 0) {
 				String residue = getResidue(net, resNode);
+				if (ignoreMultiples) {
+					String mutType = net.getRow(resNode).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
+					if (mutType != null && (mutType.equals("del") || mutType.equals("multiple")))
+						continue;
+				}
 				View<CyEdge> ev = netView.getEdgeView(edge);
 				Color c = (Color)ev.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
 				colorMap.put(residue, c);
@@ -255,14 +269,16 @@ public class StEMAPManager implements TaskObserver {
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
 			String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
 			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
-			if (pdb != null && pdb.length() > 0) {
+			boolean multiple = false;
+			if (mutType != null && (mutType.equals("del") || mutType.equals("multiple")))
+				multiple = true;
+
+			if (pdb != null && pdb.length() > 0 && (!multiple || !ignoreMultiples)) {
 				residueNodes.add(neighbor);
-			} else if (findMultiples) {
-				if (mutType != null && (mutType.equals("del") || mutType.equals("multiple"))) {
-					List<CyNode> rn = getResidueNodes(net, neighbor, true);
-					if (rn != null) residueNodes.addAll(rn);
-				}
-			} else if (mutType != null) {
+			} else if (findMultiples && multiple) {
+				List<CyNode> rn = getResidueNodes(net, neighbor, true);
+				if (rn != null) residueNodes.addAll(rn);
+			} else if (mutType != null && (!multiple || !ignoreMultiples)) {
 				residueNodes.add(neighbor);
 			}
 		}
@@ -317,7 +333,7 @@ public class StEMAPManager implements TaskObserver {
 
 		if (extraCommands != null) {
 			args = new HashMap<>();
-			args.put("command", extraCommands);
+			args.put("command", "style sphere; "+extraCommands);
 			executeCommand("structureViz", "send", args, null);
 		}
 	}
@@ -383,9 +399,9 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	public void showSpheres(List<String> residues) {
+		// System.out.println("showSpheres: "+residues.size()+" residues");
 		if (lastResidues != null) {
-			// System.out.println("Sending command: ~disp "+lastResidues);
-			chimeraCommand("~disp "+lastResidues);
+			chimeraCommand("hide "+lastResidues);
 		}
 		// Make it a comma separated list
 		String command = null;
@@ -404,24 +420,68 @@ public class StEMAPManager implements TaskObserver {
 		// System.out.println("chimera: sel "+lastResidues);
 
 		// Change to sphere
+		// System.out.println("Sending command: disp "+lastResidues);
 		chimeraCommand("disp "+lastResidues);
-		// System.out.println("Sending command: disp sel");
-		chimeraCommand("style "+lastResidues+" sphere");
 		// System.out.println("Sending command: repr sphere sel");
+		// chimeraCommand("style "+lastResidues+" sphere");
 	}
 
 	public String convertResiduesToX(String residue) {
 		String[] resArray = residue.split(",");
 		String xResidues = null;
+		Map<String, TreeSet<Integer>> chainMap = new HashMap<>();
 		for (String res: resArray) {
 			String[] resChain = res.split("\\.");
+			if (!chainMap.containsKey(resChain[1]))
+				chainMap.put(resChain[1], new TreeSet<Integer>());
+			chainMap.get(resChain[1]).add(Integer.valueOf(resChain[0]));
+		}
+
+		xResidues = null;
+		// Sort the residues
+		for (String chain: chainMap.keySet()) {
 			if (xResidues == null) {
-				xResidues = "#"+modelNumber+"/"+resChain[1]+":"+resChain[0];
+				xResidues = "#"+modelNumber+"/"+chain;
 			} else {
-				xResidues += "|#"+modelNumber+"/"+resChain[1]+":"+resChain[0];
+				xResidues += "|/"+chain;
+			}
+
+			int residueNumber = -1;
+			int residueEnd = -1;
+			if (chainMap.get(chain) != null && chainMap.get(chain).size() > 0) {
+				xResidues += ":";
+				for (Integer resNum: chainMap.get(chain)) {
+					// Are we accumulating a range?
+					if (residueEnd > 0) {
+						// Yes
+						if (resNum == residueEnd+1) {
+							residueEnd = resNum;
+							continue;
+						} else {
+							xResidues = endRange(xResidues, residueEnd);
+							residueEnd = -1;
+						}
+					} else if (residueNumber != -1 && resNum == residueNumber+1) {
+						residueEnd = resNum;
+						continue;
+					}
+
+					if (residueNumber < 0)
+						xResidues += resNum;
+					else
+						xResidues += ","+resNum;
+					residueNumber = resNum;
+				}
+				xResidues = endRange(xResidues, residueEnd);
 			}
 		}
 		return xResidues;
+	}
+
+	private String endRange(String spec, int residueEnd) {
+		if (spec == null || residueEnd < 0) return spec;
+		spec += "-"+residueEnd;
+		return spec;
 	}
 
 	public void chimeraCommand(String command) {
@@ -456,6 +516,12 @@ public class StEMAPManager implements TaskObserver {
 	public void setModelName(String name) {
 		this.modelName = name;
 	}
+
+	public boolean autoAnnotate() { return autoAnnotate; }
+	public void setAutoAnnotate(boolean auto) { this.autoAnnotate = auto; }
+
+	public boolean ignoreMultiples() { return ignoreMultiples; }
+	public void setIgnoreMultiples(boolean ignore) { this.ignoreMultiples = ignore; }
 
 	public void flushEvents() {
 		eventHelper.flushPayloadEvents();
@@ -510,6 +576,22 @@ public class StEMAPManager implements TaskObserver {
 		}
 		// System.out.println("addChains returning: "+resChain);
 		return resChain;
+	}
+
+	private void updateChimera() {
+		Map<String, Color> colorMap = new HashMap<>();
+		List<String> residues = new ArrayList<>();
+		for (CyNode node: selectedGenes) {
+			Map<String, Color> cm = getResiduesAndColors(mergedNetworkView, node);
+			for (String residue: cm.keySet()) {
+				colorMap.put(residue, cm.get(residue));
+				residues.add(residue);
+			}
+		}
+
+		showSpheres(residues);
+		if (colorMap.size() > 0)
+			colorSpheres(colorMap);
 	}
 
 	private class ClusterSort implements Comparator<CyNode> {

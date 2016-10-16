@@ -77,6 +77,8 @@ public class BuildMergedNetworkTask extends AbstractTask {
 
 		mergeTask.merge(taskMonitor, cdtNetwork, rinNetwork);
 
+		ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
+		insertTasksAfterCurrentTask(showResults.createTaskIterator(manager.getMergedNetworkView()));
 	}
 
 	@ProvidesTitle

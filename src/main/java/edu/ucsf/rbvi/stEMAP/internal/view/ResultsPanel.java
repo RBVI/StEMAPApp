@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.MouseEvent;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.image.BufferedImage;
 
 import java.util.ArrayList;
@@ -11,11 +13,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 
 import org.apache.log4j.Logger;
 import org.jfree.data.general.HeatMapDataset;
@@ -33,34 +39,48 @@ import org.cytoscape.model.CyTableUtil;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.HeatMapData;
 
-public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
+public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemListener {
 	StEMAPManager manager;
 	final CyNetwork network;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
 	JPanel resultsPanel;
+	JScrollPane scroller;
 	JLabel imageLabel;
 
 	public ResultsPanel(StEMAPManager manager) {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
 		setLayout(new BorderLayout());
-		JScrollPane scroller = initialize();
+		scroller = initialize();
 		if (scroller != null)
 			add(scroller, BorderLayout.CENTER);
+		// Add Utilities checkboxes
+		JPanel buttonBox = createButtonBox();
+		createAutoAnnotateCheckbox(buttonBox);
+		createIgnoreMultipleCheckbox(buttonBox);
+		buttonBox.add(Box.createRigidArea(new Dimension(0,10)));
+		add(buttonBox, BorderLayout.SOUTH);
 	}
 
 	public void update() {
-		JScrollPane scroller = initialize();
-		if (scroller != null) {
-			removeAll();
-			add(scroller, BorderLayout.CENTER);
+		Runnable scrollUpdater = new ScrollUpdater(this);
+		if (SwingUtilities.isEventDispatchThread()) {
+			scrollUpdater.run();
+		} else {
+			SwingUtilities.invokeLater(scrollUpdater);
 		}
 	}
+
+
 
 	private JScrollPane initialize() {
 		if (network == null)
 			return null;
 
+		if (manager.getSelectedGenes().size() == 0 && 
+		    manager.getSelectedMutations().size() == 0) 
+			return null;
+	
 		// Get the currently selected nodes
 		// List<CyNode> selectedNodes = CyTableUtil.getNodesInState(network, CyNetwork.SELECTED, true);
 		// for (CyNode node: selectedNodes) {
@@ -97,6 +117,31 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 		return scroller;
 	}
 
+	private JPanel createButtonBox() {
+		JPanel buttonBox = new JPanel();
+		buttonBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+		buttonBox.setLayout(new BoxLayout(buttonBox, BoxLayout.PAGE_AXIS));
+		return buttonBox;
+	}
+
+	private void createAutoAnnotateCheckbox(JPanel buttonBox) {
+		JCheckBox autoAnnotateCB = new JCheckBox("Auto-annotate structure");
+		autoAnnotateCB.setToolTipText("Automatically show genetic interactions of selected genes on structure");
+		autoAnnotateCB.addItemListener(this);
+		autoAnnotateCB.setActionCommand("autoAnnotate");
+		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
+		buttonBox.add(autoAnnotateCB);
+	}
+
+	private void createIgnoreMultipleCheckbox(JPanel buttonBox) {
+		JCheckBox ignoreMultiplesCB = new JCheckBox("Ignore multiple mutations");
+		ignoreMultiplesCB.setToolTipText("Don't show interactions that involved multiple mutations");
+		ignoreMultiplesCB.addItemListener(this);
+		ignoreMultiplesCB.setActionCommand("ignoreMultiples");
+		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
+		buttonBox.add(ignoreMultiplesCB);
+	}
+
 	@Override
 	public Component getComponent() {
 		return this;
@@ -114,6 +159,18 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 	@Override
 	public String getTitle() { return "StEMAP HeatMap"; }
 
+	@Override
+	public void itemStateChanged(ItemEvent e) {
+		JCheckBox cb = (JCheckBox)e.getItemSelectable();
+		String command = cb.getActionCommand();
+		boolean selected = cb.isSelected();
+		if (command.equals("autoAnnotate")) {
+			manager.setAutoAnnotate(selected);
+		} else if (command.equals("ignoreMultiples")) {
+			manager.setIgnoreMultiples(selected);
+		}
+	}
+
 	class MyChartPanel extends ChartPanel {
 		String tt = null;
 		public MyChartPanel(JFreeChart chart, int width, int height) {
@@ -128,6 +185,35 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2 {
 		@Override
 		public void setToolTipText(String text) {
 			tt = text;
+		}
+	}
+
+	class ScrollUpdater implements Runnable {
+		JPanel panel;
+
+		ScrollUpdater(JPanel p) { panel = p; }
+
+		public void run() {
+			JScrollPane newScroller = initialize();
+			if (scroller != null) {
+				BorderLayout layout = (BorderLayout)panel.getLayout();
+				Component c;
+				do {
+					c = layout.getLayoutComponent(BorderLayout.CENTER);
+					if (c != null) {
+						layout.removeLayoutComponent(c);
+						remove(c);
+					}
+				} while (c != null);
+				layout.layoutContainer(panel);
+			}
+			scroller = newScroller;
+			if (scroller != null) {
+				add(scroller, BorderLayout.CENTER);
+			}
+	
+			panel.invalidate();
+			panel.repaint();
 		}
 	}
 

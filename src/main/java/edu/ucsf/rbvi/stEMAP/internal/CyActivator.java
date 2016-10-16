@@ -99,6 +99,7 @@ public class CyActivator extends AbstractCyActivator {
 		{
 			ShowResultsPanelFactory resultsFactory = new ShowResultsPanelFactory(manager);
 			resultsFactory.register();
+			registerService(bc, resultsFactory, ShowResultsPanelFactory.class, new Properties());
 		}
 		
 		/* This probably isn't needed anymore
