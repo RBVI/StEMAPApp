@@ -81,8 +81,8 @@ public class StyleHelper {
 		to.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
 		to.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, y);
 		// Force the fill color
-		to.setLockedValue(BasicVisualLexicon.NODE_FILL_COLOR,
-		                  from.getVisualProperty(BasicVisualLexicon.NODE_FILL_COLOR));
+		// to.setLockedValue(BasicVisualLexicon.NODE_FILL_COLOR,
+		//                   from.getVisualProperty(BasicVisualLexicon.NODE_FILL_COLOR));
 		return new Point2D.Double(x,y);
 	}
 

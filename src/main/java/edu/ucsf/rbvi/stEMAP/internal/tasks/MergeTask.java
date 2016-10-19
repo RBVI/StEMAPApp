@@ -42,6 +42,7 @@ import org.cytoscape.work.Tunable;
 import org.cytoscape.work.util.BoundedDouble;
 import org.cytoscape.work.util.ListSingleSelection;
 
+import edu.ucsf.rbvi.stEMAP.internal.model.GeneStats;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.TreeLayout;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
@@ -233,6 +234,9 @@ public class MergeTask extends AbstractTask {
 			progress = progress + 1.0;
 		}
 
+		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Calculating statistics");
+		GeneStats.calculateGeneStats(cdtNetwork, cdtSubNetwork);
+
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating multi-residue edges");
 		List<CyEdge> newEdges = new ArrayList<>();
 
@@ -353,8 +357,8 @@ public class MergeTask extends AbstractTask {
 		// System.out.println("Doing layout");
 		tl.layout(attrOrder, rinBounds.getX()-rinBounds.getWidth()*5, rinBounds.getY()-200);
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating Style");
-		//
-		// Finally, create a new visual style based on the RIN style
+
+		// Create a new visual style based on the RIN style
 		// System.out.println("Creating Style");
 		styleHelper.createStyle(cdtNetworkView, minWeight, maxWeight, negativeCutoff, positiveCutoff);
 

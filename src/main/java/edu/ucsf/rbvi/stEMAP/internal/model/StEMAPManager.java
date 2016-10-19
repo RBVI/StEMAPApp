@@ -60,6 +60,7 @@ public class StEMAPManager implements TaskObserver {
 
 	boolean autoAnnotate = false;
 	boolean ignoreMultiples = false;
+	boolean useComplexColoring = false;
 
 	File mapFile = null;
 	File pdbFile = null;
@@ -522,6 +523,9 @@ public class StEMAPManager implements TaskObserver {
 
 	public boolean ignoreMultiples() { return ignoreMultiples; }
 	public void setIgnoreMultiples(boolean ignore) { this.ignoreMultiples = ignore; }
+
+	public boolean useComplexColoring() { return useComplexColoring; }
+	public void setUseComplexColoring(boolean complexColoring) { this.useComplexColoring = complexColoring; }
 
 	public void flushEvents() {
 		eventHelper.flushPayloadEvents();

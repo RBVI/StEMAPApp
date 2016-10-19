@@ -58,6 +58,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		JPanel buttonBox = createButtonBox();
 		createAutoAnnotateCheckbox(buttonBox);
 		createIgnoreMultipleCheckbox(buttonBox);
+		createComplexCheckbox(buttonBox);
 		buttonBox.add(Box.createRigidArea(new Dimension(0,10)));
 		add(buttonBox, BorderLayout.SOUTH);
 	}
@@ -106,8 +107,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 			return null;
 		}
 
-		int width = data.getColumnHeaders().length*8+200;
-		int height = data.getRowHeaders().length*8+200;
+		int width = data.getColumnHeaders().length*14+200;
+		int height = data.getRowHeaders().length*14+200;
 		// System.out.println("Chart size="+width+"x"+height);
 		ChartPanel chartPanel = new MyChartPanel(chart, width, height);
 		chartPanel.setPreferredSize(new Dimension(width, height));
@@ -142,6 +143,15 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		buttonBox.add(ignoreMultiplesCB);
 	}
 
+	private void createComplexCheckbox(JPanel buttonBox) {
+		JCheckBox complexCB = new JCheckBox("Use complex coloring");
+		complexCB.setToolTipText("When multiple genes are selected, assume they are in a complex");
+		complexCB.addItemListener(this);
+		complexCB.setActionCommand("useComplexColoring");
+		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
+		buttonBox.add(complexCB);
+	}
+
 	@Override
 	public Component getComponent() {
 		return this;
@@ -168,6 +178,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 			manager.setAutoAnnotate(selected);
 		} else if (command.equals("ignoreMultiples")) {
 			manager.setIgnoreMultiples(selected);
+		} else if (command.equals("useComplexColoring")) {
+			manager.setUseComplexColoring(selected);
 		}
 	}
 
