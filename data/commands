@@ -1,0 +1,1 @@
+turn x 90; focus; select #0:.A,.B,.E,.F; rainbow chain sel; select invert; color dark gray sel; select nucleic acid; surface sel; transparency 70,s; select clear

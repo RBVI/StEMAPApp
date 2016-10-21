@@ -42,7 +42,7 @@ import org.cytoscape.work.Tunable;
 import org.cytoscape.work.util.BoundedDouble;
 import org.cytoscape.work.util.ListSingleSelection;
 
-import edu.ucsf.rbvi.stEMAP.internal.model.GeneStats;
+import edu.ucsf.rbvi.stEMAP.internal.model.MutationStats;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.TreeLayout;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
@@ -126,7 +126,7 @@ public class MergeTask extends AbstractTask {
 			if (cancelled) {
 				taskMonitor.showMessage(TaskMonitor.Level.INFO, "Cancelled"); return;
 			}
-			Double weight = cdtNetwork.getRow(edge).get("weight", Double.class);
+			Double weight = cdtNetwork.getRow(edge).get(ModelUtils.WEIGHT_COLUMN, Double.class);
 			if (weight < negativeCutoff || weight > positiveCutoff) {
 				cdtSubNetwork.addEdge(edge);
 				if (weight < minWeight) minWeight = weight;
@@ -235,7 +235,7 @@ public class MergeTask extends AbstractTask {
 		}
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Calculating statistics");
-		GeneStats.calculateGeneStats(cdtNetwork, cdtSubNetwork);
+		MutationStats.calculateMutationStats(cdtNetwork, cdtSubNetwork);
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Creating multi-residue edges");
 		List<CyEdge> newEdges = new ArrayList<>();

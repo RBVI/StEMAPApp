@@ -44,7 +44,7 @@ public class SelectTask extends AbstractTask {
 		//	     o Highlight the residues that interact
 		//	     o If multiple mutation highlight the residues for the mutation
 		//	     o Show spheres on structure
-		Map<String, Color> colorMap = new HashMap<>();
+		Map<Color, List<String>> colorMap = new HashMap<>();
 		List<String> residues = new ArrayList<>();
 		List<CyNode> nodesToSelect = new ArrayList<>();
 		for (CyNode node: nodeList) {
@@ -71,10 +71,9 @@ public class SelectTask extends AbstractTask {
 				{
 					// Handle this carefully.  We want to get the color to map onto
 					// the residues
-					Map<String, Color> cm = manager.getResiduesAndColors(view, node);
-					for (String residue: cm.keySet()) {
-						colorMap.put(residue, cm.get(residue));
-						residues.add(residue);
+					colorMap = manager.getResiduesAndColors(view, node);
+					for (Color color: colorMap.keySet()) {
+						residues.addAll(colorMap.get(color));
 					}
 				}
 				break;

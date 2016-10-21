@@ -34,15 +34,26 @@ public class SelectionListener implements RowsSetListener {
 			return;
 
 		// OK, it's our network and the node table
+		List<CyNode> selectList = new ArrayList<CyNode>();
+		List<CyNode> deSelectList = new ArrayList<CyNode>();
 		for (RowSetRecord rowSet: e.getColumnRecords(CyNetwork.SELECTED)) {
 			CyRow row = rowSet.getRow();
 			Boolean selected = row.get(CyNetwork.SELECTED, Boolean.class);
 
 			// Get the node
 			CyNode node = mergedNetwork.getNode(row.get(CyIdentifiable.SUID, Long.class));
-			manager.selectGeneOrMutation(node, selected);
+			if (selected)
+				selectList.add(node);
+			else
+				deSelectList.add(node);
 		}
-		if (manager.getResultsPanel() != null)
-			manager.getResultsPanel().update();
+
+		if (deSelectList.size() > 0) {
+			manager.selectGenesOrMutations(deSelectList, false);
+		}
+
+		if (selectList.size() > 0) {
+			manager.selectGenesOrMutations(selectList, true);
+		}
 	}
 }

@@ -105,7 +105,7 @@ public class HeatMapData {
 				CyNode rowNode = mutations.get(row);
 				List<CyEdge> edges = network.getConnectingEdgeList(columnNode, rowNode, CyEdge.Type.ANY);
 				if (edges.size() > 0) {
-					Double dWeight = network.getRow(edges.get(0)).get("weight", Double.class);
+					Double dWeight = network.getRow(edges.get(0)).get(ModelUtils.WEIGHT_COLUMN, Double.class);
 					if (dWeight == null)
 						continue;
 					double weight = dWeight.doubleValue();

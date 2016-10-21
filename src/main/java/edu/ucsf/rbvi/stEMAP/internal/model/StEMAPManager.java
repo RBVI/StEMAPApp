@@ -157,22 +157,30 @@ public class StEMAPManager implements TaskObserver {
 		selectedMutations.clear();
 	}
 
-	public void selectGeneOrMutation(CyNode node, Boolean select) {
-		NodeType type = getNodeType(mergedNetwork, node);
-		if (type.equals(NodeType.GENE)) {
-			if (select) {
-				selectedGenes.add(node);
-			} else {
-				selectedGenes.remove(node);
+	public void selectGenesOrMutations(List<CyNode> nodes, Boolean select) {
+		boolean genesChanged = false;
+		for (CyNode node: nodes) {
+			NodeType type = getNodeType(mergedNetwork, node);
+			if (type.equals(NodeType.GENE)) {
+				if (select) {
+					selectedGenes.add(node);
+				} else {
+					selectedGenes.remove(node);
+				}
+				genesChanged = true;
+			} else if (type.equals(NodeType.MUTATION) || type.equals(NodeType.MULTIMUTATION)) {
+				if (select)
+					selectedMutations.add(node);
+				else
+					selectedMutations.remove(node);
 			}
-		} else if (type.equals(NodeType.MUTATION) || type.equals(NodeType.MULTIMUTATION)) {
-			if (select)
-				selectedMutations.add(node);
-			else
-				selectedMutations.remove(node);
 		}
 
-		if (autoAnnotate && type.equals(NodeType.GENE)) {
+		if (currentResultsPanel != null) {
+			currentResultsPanel.update();
+		}
+
+		if (autoAnnotate && genesChanged) {
 			updateChimera();
 		}
 	}
@@ -193,7 +201,7 @@ public class StEMAPManager implements TaskObserver {
 
 	public NodeType getNodeType(CyNetwork network, CyNode node) {
 		String mutType = network.getRow(node).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
-		String pdb = network.getRow(node).get(ModelUtils.PDB_COLUMN, String.class);
+		String pdb = network.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
 		if (mutType == null || mutType.length() == 0) {
 			if (pdb == null || pdb.length() == 0)
 				return NodeType.GENE;
@@ -211,7 +219,7 @@ public class StEMAPManager implements TaskObserver {
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
 			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 			if (mutType == null || mutType.length() == 0) {
-				String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
+				String pdb = net.getRow(neighbor).get(ModelUtils.RESIDUE_COLUMN, String.class);
 				if (pdb == null || pdb.length() == 0) {
 					geneNodes.add(neighbor);
 				}
@@ -227,7 +235,7 @@ public class StEMAPManager implements TaskObserver {
 			if (edge.getSource().equals(node)) {
 				neighbor = edge.getTarget();
 			}
-			String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
+			String pdb = net.getRow(neighbor).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			if (pdb != null && pdb.length() > 0) {
 				edges.add(edge);
 			} else {
@@ -240,8 +248,8 @@ public class StEMAPManager implements TaskObserver {
 		return edges;
 	}
 
-	public Map<String, Color> getResiduesAndColors(CyNetworkView netView, CyNode node) {
-		Map<String, Color> colorMap = new HashMap<>();
+	public Map<Color, List<String>> getResiduesAndColors(CyNetworkView netView, CyNode node) {
+		Map<Color, List<String>> colorMap = new HashMap<>();
 
 		CyNetwork net = netView.getModel();
 		for (CyEdge edge: net.getAdjacentEdgeList(node, CyEdge.Type.ANY)) {
@@ -249,9 +257,9 @@ public class StEMAPManager implements TaskObserver {
 			if (edge.getSource().equals(node)) {
 				resNode = edge.getTarget();
 			}
-			String pdb = net.getRow(resNode).get(ModelUtils.PDB_COLUMN, String.class);
-			if (pdb != null && pdb.length() > 0) {
-				String residue = getResidue(net, resNode);
+			String residues = net.getRow(resNode).get(ModelUtils.RESIDUE_COLUMN, String.class);
+			if (residues != null && residues.length() > 0) {
+				List<String> resSet = getResidue(net, resNode);
 				if (ignoreMultiples) {
 					String mutType = net.getRow(resNode).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 					if (mutType != null && (mutType.equals("del") || mutType.equals("multiple")))
@@ -259,7 +267,10 @@ public class StEMAPManager implements TaskObserver {
 				}
 				View<CyEdge> ev = netView.getEdgeView(edge);
 				Color c = (Color)ev.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
-				colorMap.put(residue, c);
+				if (!colorMap.containsKey(c)) {
+					colorMap.put(c, new ArrayList<String>());
+				}
+				colorMap.get(c).addAll(resSet);
 			}
 		}
 		return colorMap;
@@ -268,7 +279,7 @@ public class StEMAPManager implements TaskObserver {
 	public List<CyNode> getResidueNodes(CyNetwork net, CyNode node, boolean findMultiples) {
 		List<CyNode> residueNodes = new ArrayList<>();
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
-			String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
+			String pdb = net.getRow(neighbor).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 			boolean multiple = false;
 			if (mutType != null && (mutType.equals("del") || mutType.equals("multiple")))
@@ -293,17 +304,17 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	public List<String> getResidues(CyNetwork net, List<CyNode> nodes) {
-		Set<String> residues = new HashSet<>();
+		Set<String> resSet = new HashSet<>();
 		for (CyNode node: nodes) {
-			String residue = getResidue(net, node);
-			if (residue != null)
-				residues.add(residue);
+			List<String> residues = getResidue(net, node);
+			if (residues != null && residues.size() > 0)
+				resSet.addAll(residues);
 		}
-		return new ArrayList<String>(residues);
+		return new ArrayList<String>(resSet);
 	}
 
-	public String getResidue(CyNetwork net, CyNode node) {
-		String pdb = net.getRow(node).get(ModelUtils.PDB_COLUMN, String.class);
+	public List<String> getResidue(CyNetwork net, CyNode node) {
+		String pdb = net.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
 		if (pdb == null || pdb.length() == 0)
 			return null;
 		String[] model = pdb.split("#");
@@ -365,10 +376,12 @@ public class StEMAPManager implements TaskObserver {
 		}
 	}
 
-	public void colorSpheres(Map<String, Color> colorMap) {
+	public void colorSpheres(Map<Color, List<String>> colorMap) {
 		String command = null;
-		for (String residue: colorMap.keySet()) {
-			String comm = colorResidue(residue, colorMap.get(residue));
+		for (Color color: colorMap.keySet()) {
+			// System.out.println("Looking to color "+colorMap.get(color)+" "+color);
+			String comm = colorResidues(color, colorMap.get(color));
+			// System.out.println("Command = "+comm);
 			if (command == null)
 				command = comm;
 			else
@@ -387,10 +400,10 @@ public class StEMAPManager implements TaskObserver {
 		return command;
 	}
 	*/
-	public String colorResidue(String residue, Color color) {
+	public String colorResidues(Color color, List<String> residues) {
 		// Residue is the Cytoscape-style string of the form "nnn.a,nnn.b,...".  We need to convert
 		// it to a ChimeraX list
-		String xResidues = convertResiduesToX(residue);
+		String xResidues = convertResiduesToX(residues.toArray(new String[1]));
 		int r = color.getRed();
 		int g = color.getGreen();
 		int b = color.getBlue();
@@ -404,6 +417,8 @@ public class StEMAPManager implements TaskObserver {
 		if (lastResidues != null) {
 			chimeraCommand("hide "+lastResidues);
 		}
+	
+		/*
 		// Make it a comma separated list
 		String command = null;
 		for (String r: residues) {
@@ -412,8 +427,14 @@ public class StEMAPManager implements TaskObserver {
 			else
 				command += ","+r;
 		}
+		*/
 
-		lastResidues = convertResiduesToX(command);
+		if (residues == null || residues.size() == 0) {
+			lastResidues = null;
+			return;
+		}
+
+		lastResidues = convertResiduesToX(residues.toArray(new String[1]));
 
 		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
@@ -429,9 +450,13 @@ public class StEMAPManager implements TaskObserver {
 
 	public String convertResiduesToX(String residue) {
 		String[] resArray = residue.split(",");
+		return convertResiduesToX(resArray);
+	}
+
+	public String convertResiduesToX(String[] residues) {
 		String xResidues = null;
 		Map<String, TreeSet<Integer>> chainMap = new HashMap<>();
-		for (String res: resArray) {
+		for (String res: residues) {
 			String[] resChain = res.split("\\.");
 			if (!chainMap.containsKey(resChain[1]))
 				chainMap.put(resChain[1], new TreeSet<Integer>());
@@ -565,37 +590,63 @@ public class StEMAPManager implements TaskObserver {
 		}
 	}
 
-	private String addChains(String resChain) {
+	// FIXME: need to handle multiple residues here!!!!!
+	private List<String> addChains(String resChain) {
+		List<String> residues = new ArrayList<>();
 		String [] rc = resChain.split("[.]");
 		String chain = rc[1];
 		String residue = rc[0];
 		// System.out.println("Looking for duplicate chain for '"+chain+"'");
 		List<String> chains = getDuplicateChains(chain); // Get the chain aliases
+		// System.out.println("Duplicate chains returns: "+chains);
 		// System.out.println("Got "+chains.size()+" chains: ");
-		if (chains != null && chains.size() > 0) {
-			for (String ch: chains) {
-				// System.out.println("...chain "+ch);
-				resChain += ","+residue+"."+ch;
-			}
+		if (chains == null) {
+			chains = new ArrayList<String>();
 		}
-		// System.out.println("addChains returning: "+resChain);
-		return resChain;
+		chains.add(chain);
+		for (String ch: chains) {
+			addResidues(residues, ch, residue);
+		}
+		// System.out.println("addChains returning: "+residues);
+		return residues;
+	}
+
+	private void addResidues(List<String> residues, String chain, String resSpec) {
+		if (resSpec.indexOf("-") > 0) {
+			String[] resRange = resSpec.split("-");
+			int start = Integer.valueOf(resRange[0]);
+			int end = Integer.valueOf(resRange[1]);
+			for (int i = start; i <= end; i++) {
+				residues.add(i+"."+chain);
+			}
+		} else if (resSpec.indexOf(",") > 0) {
+			String[] resArray = resSpec.split(",");
+			for (String res: resArray) {
+				residues.add(res+"."+chain);
+			}
+		} else {
+			residues.add(resSpec+"."+chain);
+		}
 	}
 
 	private void updateChimera() {
-		Map<String, Color> colorMap = new HashMap<>();
+		Map<Color, List<String>> cm = new HashMap<>();
 		List<String> residues = new ArrayList<>();
 		for (CyNode node: selectedGenes) {
-			Map<String, Color> cm = getResiduesAndColors(mergedNetworkView, node);
-			for (String residue: cm.keySet()) {
-				colorMap.put(residue, cm.get(residue));
-				residues.add(residue);
+			Map<Color, List<String>> resCol = getResiduesAndColors(mergedNetworkView, node);
+			for (Color color: resCol.keySet()) {
+				if (cm.containsKey(color)) {
+					cm.get(color).addAll(resCol.get(color));
+				} else {
+					cm.put(color, resCol.get(color));
+				}
+				residues.addAll(resCol.get(color));
 			}
 		}
 
 		showSpheres(residues);
-		if (colorMap.size() > 0)
-			colorSpheres(colorMap);
+		if (cm != null && cm.size() > 0)
+			colorSpheres(cm);
 	}
 
 	private class ClusterSort implements Comparator<CyNode> {

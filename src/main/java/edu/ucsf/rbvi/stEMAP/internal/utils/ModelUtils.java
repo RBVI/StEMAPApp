@@ -1,6 +1,9 @@
 package edu.ucsf.rbvi.stEMAP.internal.utils;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.cytoscape.model.CyColumn;
 import org.cytoscape.model.CyEdge;
@@ -23,6 +26,7 @@ public class ModelUtils {
 	public static final String RESIDUE_COLUMN = "Residues";
 	// public static final String ID_COLUMN = "ModID";
 	public static final String PDB_COLUMN = "pdbFileName";
+	public static final String WEIGHT_COLUMN = "weight";
 
 	// Mutation types
 	public static final String SINGLE = "single";
@@ -95,6 +99,32 @@ public class ModelUtils {
 		}
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO,"Created columns for "+count+" nodes");
+	}
+
+	/**
+	 * Given a list of genes, return all of the mutations for those genes
+	 */
+	public static List<CyNode> getMutations(CyNetwork net, List<CyNode> genes) {
+		Set<CyNode> mutations = new HashSet<CyNode>();
+		for (CyNode node: genes) {
+			List<CyNode> muts = net.getNeighborList(node, CyEdge.Type.ANY);
+			if (muts != null && muts.size() > 0)
+				mutations.addAll(muts);
+		}
+		return new ArrayList<CyNode>(mutations);
+	}
+
+	/**
+	 * Given a list of genes, return all of the interactions (edges)
+	 */
+	public static List<CyEdge> getInteractions(CyNetwork net, List<CyNode> genes) {
+		List<CyEdge> interactions = new ArrayList<CyEdge>();
+		for (CyNode node: genes) {
+			List<CyEdge> gis = net.getAdjacentEdgeList(node, CyEdge.Type.ANY);
+			if (gis != null && gis.size() > 0)
+				interactions.addAll(gis);
+		}
+		return interactions;
 	}
 
 

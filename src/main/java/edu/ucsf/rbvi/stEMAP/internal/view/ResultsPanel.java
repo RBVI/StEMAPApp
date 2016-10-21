@@ -207,21 +207,20 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 
 		public void run() {
 			JScrollPane newScroller = initialize();
-			if (scroller != null) {
-				BorderLayout layout = (BorderLayout)panel.getLayout();
-				Component c;
-				do {
-					c = layout.getLayoutComponent(BorderLayout.CENTER);
-					if (c != null) {
-						layout.removeLayoutComponent(c);
-						remove(c);
-					}
-				} while (c != null);
-				layout.layoutContainer(panel);
-			}
+			BorderLayout layout = (BorderLayout)panel.getLayout();
+			Component c;
+			do {
+				c = layout.getLayoutComponent(BorderLayout.CENTER);
+				if (c != null) {
+					layout.removeLayoutComponent(c);
+					panel.remove(c);
+				}
+			} while (c != null);
+			layout.layoutContainer(panel);
+
 			scroller = newScroller;
 			if (scroller != null) {
-				add(scroller, BorderLayout.CENTER);
+				panel.add(scroller, BorderLayout.CENTER);
 			}
 	
 			panel.invalidate();
