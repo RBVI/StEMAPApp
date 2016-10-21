@@ -248,11 +248,13 @@ public class StEMAPManager implements TaskObserver {
 		return edges;
 	}
 
-	public Map<Color, List<String>> getResiduesAndColors(CyNetworkView netView, CyNode node) {
-		Map<Color, List<String>> colorMap = new HashMap<>();
+	public Map<Color, Set<String>> getResiduesAndColors(CyNetworkView netView, CyNode node, 
+	                                                     Color[] colorRange, double[] valueRange) {
+		Map<Color, Set<String>> colorMap = new HashMap<>();
 
 		CyNetwork net = netView.getModel();
 		for (CyEdge edge: net.getAdjacentEdgeList(node, CyEdge.Type.ANY)) {
+			Double weight = net.getRow(edge).get(ModelUtils.WEIGHT_COLUMN, Double.class);
 			CyNode resNode = edge.getSource();
 			if (edge.getSource().equals(node)) {
 				resNode = edge.getTarget();
@@ -268,9 +270,10 @@ public class StEMAPManager implements TaskObserver {
 				View<CyEdge> ev = netView.getEdgeView(edge);
 				Color c = (Color)ev.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
 				if (!colorMap.containsKey(c)) {
-					colorMap.put(c, new ArrayList<String>());
+					colorMap.put(c, new HashSet<String>());
 				}
 				colorMap.get(c).addAll(resSet);
+				updateRanges(weight, c, colorRange, valueRange);
 			}
 		}
 		return colorMap;
@@ -376,10 +379,15 @@ public class StEMAPManager implements TaskObserver {
 		}
 	}
 
-	public void colorSpheres(Map<Color, List<String>> colorMap) {
+	public void colorSpheres(Map<Color, Set<String>> colorMap) {
 		String command = null;
 		for (Color color: colorMap.keySet()) {
 			// System.out.println("Looking to color "+colorMap.get(color)+" "+color);
+			// System.out.println("Residues: "+colorMap.get(color));
+			Set<String> residues = colorMap.get(color);
+			if (residues == null || residues.size() == 0)
+				continue;
+
 			String comm = colorResidues(color, colorMap.get(color));
 			// System.out.println("Command = "+comm);
 			if (command == null)
@@ -400,7 +408,7 @@ public class StEMAPManager implements TaskObserver {
 		return command;
 	}
 	*/
-	public String colorResidues(Color color, List<String> residues) {
+	public String colorResidues(Color color, Set<String> residues) {
 		// Residue is the Cytoscape-style string of the form "nnn.a,nnn.b,...".  We need to convert
 		// it to a ChimeraX list
 		String xResidues = convertResiduesToX(residues.toArray(new String[1]));
@@ -630,10 +638,13 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	private void updateChimera() {
-		Map<Color, List<String>> cm = new HashMap<>();
+		Map<Color, Set<String>> cm = new HashMap<>();
 		List<String> residues = new ArrayList<>();
+		Color[] colorRange = new Color[4];
+		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
 		for (CyNode node: selectedGenes) {
-			Map<Color, List<String>> resCol = getResiduesAndColors(mergedNetworkView, node);
+			Map<Color, Set<String>> resCol = getResiduesAndColors(mergedNetworkView, node, colorRange, valueRange);
+
 			for (Color color: resCol.keySet()) {
 				if (cm.containsKey(color)) {
 					cm.get(color).addAll(resCol.get(color));
@@ -645,8 +656,144 @@ public class StEMAPManager implements TaskObserver {
 		}
 
 		showSpheres(residues);
-		if (cm != null && cm.size() > 0)
-			colorSpheres(cm);
+
+		if (cm != null && cm.size() > 0) {
+			resolveDuplicates(cm);
+			Map<Color, Set<String>> newMap = compressMap(cm, colorRange);
+			colorSpheres(newMap);
+		}
+	}
+
+	private void updateRanges(double weight, Color color, Color[] colorRange, double[] valueRange) {
+		// System.out.println("updateRanges: "+weight+", "+color);
+		// System.out.println("valueRange: "+valueRange[0]+"-"+valueRange[1]+", "+valueRange[2]+"-"+valueRange[3]);
+		// System.out.println("colorRange: "+colorRange[0]+"-"+colorRange[1]+", "+colorRange[2]+"-"+colorRange[3]);
+		if (weight < 0.0) {
+			if (weight < valueRange[0]) {
+				valueRange[0] = weight;
+				colorRange[0] = color;
+				// System.out.println("new low negative color: "+color);
+			} 
+			
+			if (weight > valueRange[1]) {
+				valueRange[1] = weight;
+				colorRange[1] = color;
+				// System.out.println("new high negative color: "+color);
+			}
+		} else {
+			if (weight < valueRange[2]) {
+				valueRange[2] = weight;
+				colorRange[2] = color;
+				// System.out.println("new low positive color: "+color);
+			} 
+			
+			if (weight > valueRange[3]) {
+				valueRange[3] = weight;
+				colorRange[3] = color;
+				// System.out.println("new high positive color: "+color);
+			}
+		}
+	}
+
+	// Quantize the colors a little to compress the map
+	static int COLORS = 5;
+	public Map<Color, Set<String>> compressMap(Map<Color, Set<String>> cmap, Color[] colorRange) {
+		Map<Color, Set<String>> newMap = new HashMap<>();
+		List<Color> colorList = new ArrayList<Color>();
+		makeRange(colorList, colorRange[0], colorRange[1], COLORS);
+		makeRange(colorList, colorRange[2], colorRange[3], COLORS);
+		for (Color clr: colorList) {
+			newMap.put(clr, new HashSet<String>());
+		}
+
+		for (Color clr: cmap.keySet()) {
+			addBinnedColor(newMap, colorList, clr, cmap.get(clr));
+		}
+
+		return newMap;
+	}
+
+	public void resolveDuplicates(Map<Color, Set<String>>cmap) {
+		// Make an inverse map
+		Map<String, Set<Color>> reverseMap = new HashMap<>();
+		for (Color clr: cmap.keySet()) {
+			for (String res: cmap.get(clr)) {
+				if (!reverseMap.containsKey(res))
+					reverseMap.put(res, new HashSet<Color>());
+				reverseMap.get(res).add(clr);
+			}
+		}
+
+		// Find all of the duplicates and create average colors for them
+		for (String res: reverseMap.keySet()) {
+			Set<Color> colors = reverseMap.get(res);
+			if (colors.size() > 1) {
+				for (Color color: colors) {
+					cmap.get(color).remove(res); // Remove the residues from their previous colors
+					if (cmap.get(color).size() == 0)
+						cmap.remove(color);
+				}
+				Color avgColor = adjustedColor(colors);
+				if (cmap.containsKey(avgColor)) {
+					cmap.get(avgColor).add(res);
+				} else {
+					cmap.put(avgColor, new HashSet<String>());
+					cmap.get(avgColor).add(res);
+				}
+			}
+		}
+	}
+
+	private void makeRange(List<Color> colorList, Color lowColor, Color highColor, int bins) {
+		float rStep = (float)(highColor.getRed() - lowColor.getRed())/(bins-1);
+		float gStep = (float)(highColor.getGreen() - lowColor.getGreen())/(bins-1);
+		float bStep = (float)(highColor.getBlue() - lowColor.getBlue())/(bins-1);
+
+		int rLow = lowColor.getRed();
+		int gLow = lowColor.getGreen();
+		int bLow = lowColor.getBlue();
+		for (int i = 0; i < bins; i++) {
+			int r = rLow + (int)(i*rStep);
+			int g = gLow + (int)(i*gStep);
+			int b = bLow + (int)(i*bStep);
+			colorList.add(new Color(r, g, b));
+		}
+	}
+
+	private void addBinnedColor(Map<Color, Set<String>> map, List<Color> colorList, Color color, Set<String>residues) {
+		double distance = Double.MAX_VALUE;
+		Color bestColor = colorList.get(0);
+
+		for (Color c: colorList) {
+			double d = colorDist(c, color);
+			if (d < distance) {
+				bestColor = c;
+				distance = d;
+			}
+		}
+		map.get(bestColor).addAll(residues);
+	}
+
+	private double colorDist(Color c1, Color c2) {
+		int r1 = c1.getRed();
+		int g1 = c1.getGreen();
+		int b1 = c1.getBlue();
+		int r2 = c2.getRed();
+		int g2 = c2.getGreen();
+		int b2 = c2.getBlue();
+		double d = Math.sqrt(Math.pow((r2-r1),2) + Math.pow((g2-g1),2) + Math.pow((b2-b1),2));
+		return d;
+	}
+
+	// Currently, this is a very simple approach to this
+	private Color adjustedColor(Set<Color> colors) {
+		int r = 0, g = 0, b = 0;
+		for (Color c: colors) {
+			r += c.getRed();
+			g += c.getGreen();
+			b += c.getBlue();
+		}
+		return new Color(r/colors.size(), g/colors.size(), b/colors.size());
 	}
 
 	private class ClusterSort implements Comparator<CyNode> {

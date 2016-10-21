@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNode;
@@ -44,9 +45,11 @@ public class SelectTask extends AbstractTask {
 		//	     o Highlight the residues that interact
 		//	     o If multiple mutation highlight the residues for the mutation
 		//	     o Show spheres on structure
-		Map<Color, List<String>> colorMap = new HashMap<>();
+		Map<Color, Set<String>> colorMap = new HashMap<>();
 		List<String> residues = new ArrayList<>();
 		List<CyNode> nodesToSelect = new ArrayList<>();
+		Color[] colorRange = new Color[4];
+		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
 		for (CyNode node: nodeList) {
 			NodeType type = manager.getNodeType(network, node);
 			switch (type) {
@@ -71,9 +74,14 @@ public class SelectTask extends AbstractTask {
 				{
 					// Handle this carefully.  We want to get the color to map onto
 					// the residues
-					colorMap = manager.getResiduesAndColors(view, node);
-					for (Color color: colorMap.keySet()) {
-						residues.addAll(colorMap.get(color));
+					Map<Color, Set<String>> resCol = manager.getResiduesAndColors(view, node, colorRange, valueRange);
+					for (Color color: resCol.keySet()) {
+						if (colorMap.containsKey(color)) {
+							colorMap.get(color).addAll(resCol.get(color));
+						} else {
+							colorMap.put(color, resCol.get(color));
+						}
+						residues.addAll(resCol.get(color));
 					}
 				}
 				break;
@@ -87,8 +95,11 @@ public class SelectTask extends AbstractTask {
 
 		}
 		manager.showSpheres(residues);
-		if (colorMap.size() > 0)
-			manager.colorSpheres(colorMap);
+		if (colorMap.size() > 0) {
+			manager.resolveDuplicates(colorMap);
+			Map<Color, Set<String>> newMap = manager.compressMap(colorMap, colorRange);
+			manager.colorSpheres(newMap);
+		}
 
 		manager.selectNodes(network, nodesToSelect);
 	}

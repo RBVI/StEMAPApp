@@ -27,34 +27,41 @@ public class ShowResultsPanel extends AbstractTask {
 	final StEMAPManager manager;
 	final ShowResultsPanelFactory factory;
 	final boolean show;
+	CySwingApplication swingApplication = null;
+	CytoPanel cytoPanel = null;
 
 	public ShowResultsPanel(final StEMAPManager manager, final ShowResultsPanelFactory factory, final boolean show) {
 		this.manager = manager;
 		this.factory = factory;
 		this.show = show;
+		this.swingApplication = manager.getService(CySwingApplication.class);
+		this.cytoPanel = swingApplication.getCytoPanel(CytoPanelName.EAST);
 	}
 
 	public void run(TaskMonitor taskMonitor) {
-		CySwingApplication swingApplication = manager.getService(CySwingApplication.class);
-		CytoPanel cytoPanel = swingApplication.getCytoPanel(CytoPanelName.EAST);
-
 		if (show) {
 			factory.unregister();
-			ResultsPanel panel = new ResultsPanel(manager);
-			manager.registerService(panel, CytoPanelComponent.class, new Properties());
-			manager.setResultsPanel(panel);
-			if (cytoPanel.getState() == CytoPanelState.HIDE)
-				cytoPanel.setState(CytoPanelState.DOCK);
-
+			showPanel();
 			factory.register();
 		} else {
 			factory.unregister();
-			manager.unregisterService(manager.getResultsPanel(), CytoPanelComponent.class);
-			manager.setResultsPanel(null);
-			if (cytoPanel.getCytoPanelComponentCount() == 0)
-				cytoPanel.setState(CytoPanelState.HIDE);
-
+			hidePanel();
 			factory.register();
 		}
+	}
+
+	public void showPanel() {
+		ResultsPanel panel = new ResultsPanel(manager);
+		manager.registerService(panel, CytoPanelComponent.class, new Properties());
+		manager.setResultsPanel(panel);
+		if (cytoPanel.getState() == CytoPanelState.HIDE)
+			cytoPanel.setState(CytoPanelState.DOCK);
+	}
+
+	public void hidePanel() {
+		manager.unregisterService(manager.getResultsPanel(), CytoPanelComponent.class);
+		manager.setResultsPanel(null);
+		if (cytoPanel.getCytoPanelComponentCount() == 0)
+			cytoPanel.setState(CytoPanelState.HIDE);
 	}
 }

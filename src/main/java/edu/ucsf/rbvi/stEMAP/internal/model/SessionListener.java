@@ -14,6 +14,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 
 import org.cytoscape.application.CyUserLog;
+import org.cytoscape.application.swing.CytoPanelComponent;
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.session.CySession;
 import org.cytoscape.session.events.SessionAboutToBeSavedEvent;
@@ -25,6 +26,7 @@ import org.cytoscape.work.SynchronousTaskManager;
 import org.cytoscape.work.Task;
 import org.cytoscape.work.TaskIterator;
 
+import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanel;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 
 public class SessionListener implements SessionAboutToBeSavedListener, SessionLoadedListener {
@@ -102,19 +104,13 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 		args.put("cytoscapeToChimera","false");
 		manager.executeCommand("structureViz", "syncColors", args, null);
 
-		manager.setResultsPanel(null);
-
-		// Finally, open up our results panel
 		ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
-		showResults.unregister();
-		showResults.register();
-	
-		SynchronousTaskManager taskManager = manager.getService(SynchronousTaskManager.class);
-		TaskIterator ti = showResults.createTaskIterator(manager.getMergedNetworkView());
-		try {
-			while (ti.hasNext())
-				ti.next().run(null);
-		} catch(Exception tie) { }
+		ShowResultsPanel panel = new ShowResultsPanel(manager, showResults, true);
+		// Clean up step
+		panel.hidePanel();
+		// Show the panel
+		panel.run(null);
+
 	}
 
 	private void copyFile(File from, File to) throws IOException {
