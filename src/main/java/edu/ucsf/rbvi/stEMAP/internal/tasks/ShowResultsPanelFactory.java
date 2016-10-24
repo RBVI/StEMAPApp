@@ -8,6 +8,7 @@ import org.cytoscape.model.CyNetwork;
 import org.cytoscape.task.AbstractNetworkViewTaskFactory;
 import org.cytoscape.task.NetworkViewTaskFactory;
 import org.cytoscape.view.model.CyNetworkView;
+import org.cytoscape.work.TaskFactory;
 import org.cytoscape.work.TaskIterator;
 
 import static org.cytoscape.work.ServiceProperties.ENABLE_FOR;
@@ -19,7 +20,7 @@ import static org.cytoscape.work.ServiceProperties.TITLE;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.view.ResultsPanel;
 
-public class ShowResultsPanelFactory extends AbstractNetworkViewTaskFactory {
+public class ShowResultsPanelFactory extends AbstractNetworkViewTaskFactory implements TaskFactory {
 	private final StEMAPManager manager;
 	boolean show = true;
 
@@ -35,6 +36,16 @@ public class ShowResultsPanelFactory extends AbstractNetworkViewTaskFactory {
 	@Override
 	public boolean isReady(CyNetworkView networkView) {
 		if (networkView == null) return false;
+		return true;
+	}
+
+	@Override
+	public TaskIterator createTaskIterator() {
+		return new TaskIterator(new ShowResultsPanel(manager, this, show));
+	}
+
+	@Override
+	public boolean isReady() {
 		return true;
 	}
 

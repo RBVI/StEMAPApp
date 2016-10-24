@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import javax.swing.SwingUtilities;
 
 import org.cytoscape.application.swing.CytoPanel;
 import org.cytoscape.application.swing.CytoPanelComponent;
@@ -51,17 +52,35 @@ public class ShowResultsPanel extends AbstractTask {
 	}
 
 	public void showPanel() {
-		ResultsPanel panel = new ResultsPanel(manager);
-		manager.registerService(panel, CytoPanelComponent.class, new Properties());
-		manager.setResultsPanel(panel);
-		if (cytoPanel.getState() == CytoPanelState.HIDE)
-			cytoPanel.setState(CytoPanelState.DOCK);
+		Show actualShow = new Show();
+		if (SwingUtilities.isEventDispatchThread()) {
+			actualShow.run();
+		} else {
+			SwingUtilities.invokeLater(actualShow);
+		}
 	}
 
 	public void hidePanel() {
-		manager.unregisterService(manager.getResultsPanel(), CytoPanelComponent.class);
+		try {
+			System.out.println("Results panel = "+manager.getResultsPanel());
+			manager.unregisterService(manager.getResultsPanel(), CytoPanelComponent.class);
+		} catch (Exception e) {
+			// We assume that we just hadn't registered it, yet
+			e.printStackTrace();
+		}
 		manager.setResultsPanel(null);
 		if (cytoPanel.getCytoPanelComponentCount() == 0)
 			cytoPanel.setState(CytoPanelState.HIDE);
+	}
+
+	private class Show implements Runnable {
+		public void run() {
+			ResultsPanel panel = new ResultsPanel(manager);
+			manager.registerService(panel, CytoPanelComponent.class, new Properties());
+			System.out.println("Setting results panel to: "+panel);
+			manager.setResultsPanel(panel);
+			if (cytoPanel.getState() == CytoPanelState.HIDE)
+				cytoPanel.setState(CytoPanelState.DOCK);
+		}
 	}
 }

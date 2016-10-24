@@ -34,6 +34,8 @@ import org.cytoscape.work.TaskMonitor;
 import org.cytoscape.work.TaskObserver;
 
 import edu.ucsf.rbvi.stEMAP.internal.view.ResultsPanel;
+import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanel;
+import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils.NodeType;
 
@@ -155,6 +157,13 @@ public class StEMAPManager implements TaskObserver {
 		modelName = null;
 		selectedGenes.clear();
 		selectedMutations.clear();
+		if (currentResultsPanel != null) {
+			System.out.println("Hiding results panel");
+			ShowResultsPanelFactory showResults = getService(ShowResultsPanelFactory.class);
+			ShowResultsPanel panel = new ShowResultsPanel(this, showResults, false);
+			panel.hidePanel();
+			currentResultsPanel = null;
+		}
 	}
 
 	public void selectGenesOrMutations(List<CyNode> nodes, Boolean select) {

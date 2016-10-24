@@ -85,6 +85,7 @@ public class CyActivator extends AbstractCyActivator {
 		}
 
 		// Reset
+		/*
 		{
 			Properties resetProps = new Properties();
 			ResetTaskFactory resetTaskFactory = new ResetTaskFactory(manager);
@@ -95,6 +96,7 @@ public class CyActivator extends AbstractCyActivator {
 			resetProps.setProperty(ENABLE_FOR, "network");
 			registerService(bc, resetTaskFactory, NetworkTaskFactory.class, resetProps);
 		}
+		*/
 		
 		{
 			ShowResultsPanelFactory resultsFactory = new ShowResultsPanelFactory(manager);
@@ -116,6 +118,7 @@ public class CyActivator extends AbstractCyActivator {
 		}
 		*/
 
+		/*
 		{
 			Properties splitResiduesProps = new Properties();
 			SplitResiduesTaskFactory splitResiduesTaskFactory = new SplitResiduesTaskFactory(manager);
@@ -127,7 +130,9 @@ public class CyActivator extends AbstractCyActivator {
 			splitResiduesProps.setProperty(ENABLE_FOR, "network");
 			registerService(bc, splitResiduesTaskFactory, NetworkTaskFactory.class, splitResiduesProps);
 		}
+		*/
 		
+		/*
 		{
 			Properties createRINProps = new Properties();
 			CreateRINTaskFactory createRINTaskFactory = new CreateRINTaskFactory(manager);
@@ -137,7 +142,9 @@ public class CyActivator extends AbstractCyActivator {
 			createRINProps.setProperty(MENU_GRAVITY, "12.0");
 			registerService(bc, createRINTaskFactory, TaskFactory.class, createRINProps);
 		}
+		*/
 		
+		/*
 		{
 			Properties mergeProps = new Properties();
 			MergeTaskFactory mergeTaskFactory = new MergeTaskFactory(manager);
@@ -147,6 +154,7 @@ public class CyActivator extends AbstractCyActivator {
 			mergeProps.setProperty(MENU_GRAVITY, "13.0");
 			registerService(bc, mergeTaskFactory, TaskFactory.class, mergeProps);
 		}
+		*/
 
 		{
 			Properties props = new Properties();

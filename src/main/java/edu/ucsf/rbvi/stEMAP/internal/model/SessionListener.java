@@ -32,6 +32,8 @@ import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 public class SessionListener implements SessionAboutToBeSavedListener, SessionLoadedListener {
 	StEMAPManager manager;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
+	final static String PDBFILE_COLUMN = "PDBFile";
+	final static String MAPFILE_COLUMN = "MAPFile";
 	public SessionListener(StEMAPManager manager) {
 		this.manager = manager;
 	}
@@ -57,6 +59,7 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 	public void handleEvent(SessionLoadedEvent e) {
 		// Get mergedNetwork
 		CySession session = e.getLoadedSession();
+		CyNetwork mergedNetwork = null;
 		for (CyNetwork network: session.getNetworks()) {
 			if (network.getDefaultNetworkTable().getColumn(StEMAPManager.CDT_NETWORK) == null)
 				continue;
@@ -64,6 +67,7 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 				continue;
 
 			// OK, we've found the merged network
+			mergedNetwork = network;
 			manager.setMergedNetwork(network);
 			// Get mergedNetworkView
 			for (CyNetworkView view: session.getNetworkViews()) {
@@ -75,12 +79,15 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 		}
 
 		Map<String, List<File>> appFileMap = e.getLoadedSession().getAppFileListMap();
+		boolean showSidePanel = true;
 		if (appFileMap != null && appFileMap.containsKey("StEMAPApp")) {
 			List<File> fileList = appFileMap.get("StEMAPApp");
 			File pdbFile = null;
+			File mapFile = null;
 			for (File file: fileList) {
 				if (file.getAbsolutePath().endsWith(".json")) {
 					try {
+						mapFile = file;
 						manager.readStructureMap(file);
 					} catch (Exception ioe) {
 						logger.error("Unable to read structure map: "+ioe.getMessage());
@@ -96,20 +103,48 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 			} else {
 				manager.loadPDB(manager.getPDB(), manager.getChimeraCommands());
 			}
+
+			// Save for a possible future "reset" operation
+			mergedNetwork.getRow(mergedNetwork).set(PDBFILE_COLUMN, pdbFile.getAbsolutePath());
+			mergedNetwork.getRow(mergedNetwork).set(MAPFILE_COLUMN, mapFile.getAbsolutePath());
+		} else if (mergedNetwork != null) {
+			// This may be a reset.  See if we have paths
+			String pdbFilePath = mergedNetwork.getRow(mergedNetwork).get(PDBFILE_COLUMN, String.class);
+			String mapFilePath = mergedNetwork.getRow(mergedNetwork).get(MAPFILE_COLUMN, String.class);
+			try {
+				manager.readStructureMap(new File(mapFilePath));
+				manager.loadPDB(pdbFilePath, manager.getChimeraCommands());
+			} catch (Exception ioe) {
+				logger.error("Unable to read files: "+ioe.getMessage());
+			}
+		} else {
+			showSidePanel = false;
 		}
 
-		// Synchronize our colors
-		Map<String, Object> args = new HashMap<>();
-		args.put("chimeraToCytoscape","true");
-		args.put("cytoscapeToChimera","false");
-		manager.executeCommand("structureViz", "syncColors", args, null);
+		if (showSidePanel) {
+			try {
+				// Synchronize our colors
+				Map<String, Object> args = new HashMap<>();
+				args.put("chimeraToCytoscape","true");
+				args.put("cytoscapeToChimera","false");
+				manager.executeCommand("structureViz", "syncColors", args, null);
+			} catch (Exception ex) {
+				logger.error("Unable to syncrhonize colors: "+ex.getMessage());
+			}
+		}
 
-		ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
-		ShowResultsPanel panel = new ShowResultsPanel(manager, showResults, true);
-		// Clean up step
-		panel.hidePanel();
-		// Show the panel
-		panel.run(null);
+		try {
+			ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
+			ShowResultsPanel panel = new ShowResultsPanel(manager, showResults, true);
+			// Clean up step
+			panel.hidePanel();
+			if (showSidePanel) {
+				// Show the panel
+				panel.run(null);
+			}
+		} catch (Exception ex) {
+			logger.error("Unable to launch results panel: "+ex.getMessage());
+		}
 
 	}
 
