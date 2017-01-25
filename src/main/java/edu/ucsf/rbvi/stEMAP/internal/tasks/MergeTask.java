@@ -366,6 +366,7 @@ public class MergeTask extends AbstractTask {
 		manager.getService(CyNetworkViewManager.class).addNetworkView(cdtNetworkView);
 		manager.setMergedNetwork(cdtSubNetwork);
 		manager.setMergedNetworkView(cdtNetworkView);
+		manager.setMinMax(minWeight, maxWeight);
 
 		// Finally, write our SUIDs so we can restore things cleanly later
 		ModelUtils.createColumn(cdtSubNetwork.getDefaultNetworkTable(), StEMAPManager.RIN_NETWORK, Long.class);

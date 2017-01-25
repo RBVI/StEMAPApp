@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.cytoscape.command.AvailableCommands;
 import org.cytoscape.command.CommandExecutorTaskFactory;
 import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNetwork;
@@ -45,6 +46,7 @@ public class StEMAPManager implements TaskObserver {
 	public static final String RIN_NETWORK = "RINNetwork.SUID";
 	public static final String CDT_NETWORK = "CDTNetwork.SUID";
 	CommandExecutorTaskFactory commandTaskFactory = null;
+	AvailableCommands availableCommands = null;
 	SynchronousTaskManager<?> taskManager = null;
 
 	Set<CyNode> selectedGenes;
@@ -63,6 +65,8 @@ public class StEMAPManager implements TaskObserver {
 	boolean autoAnnotate = false;
 	boolean ignoreMultiples = false;
 	boolean useComplexColoring = false;
+	double minWeight = 0.0;
+	double maxWeight = 0.0;
 
 	File mapFile = null;
 	File pdbFile = null;
@@ -158,7 +162,7 @@ public class StEMAPManager implements TaskObserver {
 		selectedGenes.clear();
 		selectedMutations.clear();
 		if (currentResultsPanel != null) {
-			System.out.println("Hiding results panel");
+			// System.out.println("Hiding results panel");
 			ShowResultsPanelFactory showResults = getService(ShowResultsPanelFactory.class);
 			ShowResultsPanel panel = new ShowResultsPanel(this, showResults, false);
 			panel.hidePanel();
@@ -178,9 +182,9 @@ public class StEMAPManager implements TaskObserver {
 				}
 				genesChanged = true;
 			} else if (type.equals(NodeType.MUTATION) || type.equals(NodeType.MULTIMUTATION)) {
-				if (select)
+				if (select) {
 					selectedMutations.add(node);
-				else
+				} else
 					selectedMutations.remove(node);
 			}
 		}
@@ -228,7 +232,7 @@ public class StEMAPManager implements TaskObserver {
 		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
 			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
 			if (mutType == null || mutType.length() == 0) {
-				String pdb = net.getRow(neighbor).get(ModelUtils.RESIDUE_COLUMN, String.class);
+				String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
 				if (pdb == null || pdb.length() == 0) {
 					geneNodes.add(neighbor);
 				}
@@ -338,8 +342,9 @@ public class StEMAPManager implements TaskObserver {
 		if (pdbPath != null) {
 			args.put("structureFile", pdbPath);
 			pdbFile = new File(pdbPath);
-		} else
+		} else {
 			args.put("pdbID", getPDB());
+		}
 
 		args.put("showDialog", "true");
 		executeCommand("structureViz", "open", args, this);
@@ -430,7 +435,8 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	public void showSpheres(List<String> residues) {
-		// System.out.println("showSpheres: "+residues.size()+" residues");
+		System.out.println("showSpheres: "+residues.size()+" residues");
+		System.out.println("First residue = "+residues.get(0));
 		if (lastResidues != null) {
 			chimeraCommand("hide "+lastResidues);
 		}
@@ -451,7 +457,13 @@ public class StEMAPManager implements TaskObserver {
 			return;
 		}
 
+		System.out.println("showSpheres: converting to string ");
+		try {
 		lastResidues = convertResiduesToX(residues.toArray(new String[1]));
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		System.out.println("lastResidues = "+lastResidues);
 
 		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
@@ -459,7 +471,7 @@ public class StEMAPManager implements TaskObserver {
 		// System.out.println("chimera: sel "+lastResidues);
 
 		// Change to sphere
-		// System.out.println("Sending command: disp "+lastResidues);
+		System.out.println("Sending command: disp "+lastResidues);
 		chimeraCommand("disp "+lastResidues);
 		// System.out.println("Sending command: repr sphere sel");
 		// chimeraCommand("style "+lastResidues+" sphere");
@@ -538,8 +550,15 @@ public class StEMAPManager implements TaskObserver {
 		if (commandTaskFactory == null)
 			commandTaskFactory = getService(CommandExecutorTaskFactory.class);
 
+		if (availableCommands == null)
+			availableCommands = getService(AvailableCommands.class);
+
 		if (taskManager == null)
 			taskManager = getService(SynchronousTaskManager.class);
+
+		if (availableCommands.getCommands(namespace) == null ||
+				availableCommands.getCommands(namespace).size() == 0)
+			return;
 		TaskIterator ti = commandTaskFactory.createTaskIterator(namespace, command, args, observer);
 		taskManager.execute(ti);
 	}
@@ -567,7 +586,24 @@ public class StEMAPManager implements TaskObserver {
 	public void setIgnoreMultiples(boolean ignore) { this.ignoreMultiples = ignore; }
 
 	public boolean useComplexColoring() { return useComplexColoring; }
-	public void setUseComplexColoring(boolean complexColoring) { this.useComplexColoring = complexColoring; }
+	public void setUseComplexColoring(boolean complexColoring) { 
+		System.out.println("Setting useComplexColoring to "+complexColoring);
+		this.useComplexColoring = complexColoring; 
+	}
+
+	public double getMinWeight() { return minWeight; }
+	public void setMinWeight(double min) { minWeight = min; }
+
+	public double getMaxWeight() { return maxWeight; }
+	public void setMaxWeight(double max) { maxWeight = max; }
+
+	public void setMinMax(double min, double max) { 
+		minWeight = min; maxWeight = max; 
+		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), ModelUtils.MIN_WEIGHT_COLUMN, Double.class);
+		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), ModelUtils.MAX_WEIGHT_COLUMN, Double.class);
+		mergedNetwork.getRow(mergedNetwork).set(ModelUtils.MIN_WEIGHT_COLUMN, min);
+		mergedNetwork.getRow(mergedNetwork).set(ModelUtils.MAX_WEIGHT_COLUMN, max);
+	}
 
 	public void flushEvents() {
 		eventHelper.flushPayloadEvents();
@@ -651,9 +687,43 @@ public class StEMAPManager implements TaskObserver {
 		List<String> residues = new ArrayList<>();
 		Color[] colorRange = new Color[4];
 		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
-		for (CyNode node: selectedGenes) {
-			Map<Color, Set<String>> resCol = getResiduesAndColors(mergedNetworkView, node, colorRange, valueRange);
 
+		// Check to see if we're using complex coloring.  If we are, we need to do the coloring
+		// in one shot, not node by node
+		boolean complexColoring = false;
+		if (useComplexColoring()) {
+			complexColoring = true;
+			System.out.println("Complex coloring = true");
+			// Make sure we've only selected GENEs
+			for (CyNode node: selectedGenes) {
+				if (getNodeType(mergedNetwork, node) == NodeType.GENE)
+					continue;
+				System.out.println("Node: "+node+" is not a GENE!");
+				complexColoring = false;
+				break;
+			}
+		}
+
+		Map<Color, Set<String>> resCol;
+		if (!complexColoring) {
+			for (CyNode node: selectedGenes) {
+				resCol = getResiduesAndColors(mergedNetworkView, node, colorRange, valueRange);
+
+				for (Color color: resCol.keySet()) {
+					if (cm.containsKey(color)) {
+						cm.get(color).addAll(resCol.get(color));
+					} else {
+						cm.put(color, resCol.get(color));
+					}
+					residues.addAll(resCol.get(color));
+				}
+			}
+		} else {
+			System.out.println("Using complex coloring");
+			colorRange = new Color[6]; // We actually use three color ranges for complexes
+			resCol = MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, 
+							                                           new ArrayList<CyNode>(selectedGenes), colorRange);
+			System.out.println("resCol has "+resCol.size()+" colors");
 			for (Color color: resCol.keySet()) {
 				if (cm.containsKey(color)) {
 					cm.get(color).addAll(resCol.get(color));
@@ -664,12 +734,15 @@ public class StEMAPManager implements TaskObserver {
 			}
 		}
 
+		System.out.println("residues has "+residues.size()+" residues");
 		showSpheres(residues);
 
 		if (cm != null && cm.size() > 0) {
+			try {
 			resolveDuplicates(cm);
 			Map<Color, Set<String>> newMap = compressMap(cm, colorRange);
 			colorSpheres(newMap);
+			} catch (Exception e) { e.printStackTrace(); }
 		}
 	}
 
@@ -711,6 +784,8 @@ public class StEMAPManager implements TaskObserver {
 		List<Color> colorList = new ArrayList<Color>();
 		makeRange(colorList, colorRange[0], colorRange[1], COLORS);
 		makeRange(colorList, colorRange[2], colorRange[3], COLORS);
+		if (colorRange.length == 6)
+			makeRange(colorList, colorRange[4], colorRange[5], COLORS);
 		for (Color clr: colorList) {
 			newMap.put(clr, new HashSet<String>());
 		}
@@ -817,6 +892,14 @@ public class StEMAPManager implements TaskObserver {
 		public int compare(CyNode a, CyNode b) {
 			String nameA = ModelUtils.getName(mergedNetwork, a);
 			String nameB = ModelUtils.getName(mergedNetwork, b);
+			if (!orderMap.containsKey(nameA)) {
+				System.out.println("Can't find entry for "+nameA);
+				return -1;
+			}
+			if (!orderMap.containsKey(nameB)) {
+				System.out.println("Can't find entry for "+nameB);
+				return 1;
+			}
 			Integer orderA = orderMap.get(nameA);
 			Integer orderB = orderMap.get(nameB);
 			return orderA.compareTo(orderB);

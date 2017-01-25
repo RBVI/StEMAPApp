@@ -63,8 +63,9 @@ public class BuildMergedNetworkTask extends AbstractTask {
 			return;
 		}
 
-		if (pdbFile != null)
+		if (pdbFile != null) {
 			pdbFilePath = pdbFile.getAbsolutePath();
+		}
 
 		taskMonitor.showMessage(TaskMonitor.Level.INFO, "Loading PDB structure");
 		manager.loadPDB(pdbFilePath, manager.getChimeraCommands());

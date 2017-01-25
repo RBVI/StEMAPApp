@@ -27,6 +27,8 @@ public class ModelUtils {
 	// public static final String ID_COLUMN = "ModID";
 	public static final String PDB_COLUMN = "pdbFileName";
 	public static final String WEIGHT_COLUMN = "weight";
+	public static final String MIN_WEIGHT_COLUMN = "minWeight";
+	public static final String MAX_WEIGHT_COLUMN = "maxWeight";
 
 	// Mutation types
 	public static final String SINGLE = "single";
@@ -53,8 +55,11 @@ public class ModelUtils {
 		int count = 0;
 
 		String pdbId = manager.getPDB();
-		if (manager.usePDBFile() && manager.getPDBFileName() != null)
+		if (manager.usePDBFile() && manager.getPDBFileName() != null) {
 			pdbId = manager.getPDBFileName();
+			if (pdbId.endsWith(".pdb") || pdbId.endsWith(".cif"))
+				pdbId = pdbId.substring(0, pdbId.length()-4);
+		}
 
 		for (CyNode node: network.getNodeList()) {
 			String name = network.getRow(node).get(CyNetwork.NAME, String.class);

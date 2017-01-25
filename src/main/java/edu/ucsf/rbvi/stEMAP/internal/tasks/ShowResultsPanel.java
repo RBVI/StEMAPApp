@@ -43,7 +43,6 @@ public class ShowResultsPanel extends AbstractTask {
 		if (show) {
 			factory.unregister();
 			showPanel();
-			factory.register();
 		} else {
 			factory.unregister();
 			hidePanel();
@@ -62,11 +61,10 @@ public class ShowResultsPanel extends AbstractTask {
 
 	public void hidePanel() {
 		try {
-			System.out.println("Results panel = "+manager.getResultsPanel());
 			manager.unregisterService(manager.getResultsPanel(), CytoPanelComponent.class);
 		} catch (Exception e) {
 			// We assume that we just hadn't registered it, yet
-			e.printStackTrace();
+			// e.printStackTrace();
 		}
 		manager.setResultsPanel(null);
 		if (cytoPanel.getCytoPanelComponentCount() == 0)
@@ -77,10 +75,9 @@ public class ShowResultsPanel extends AbstractTask {
 		public void run() {
 			ResultsPanel panel = new ResultsPanel(manager);
 			manager.registerService(panel, CytoPanelComponent.class, new Properties());
-			System.out.println("Setting results panel to: "+panel);
 			manager.setResultsPanel(panel);
-			if (cytoPanel.getState() == CytoPanelState.HIDE)
-				cytoPanel.setState(CytoPanelState.DOCK);
+			cytoPanel.setState(CytoPanelState.DOCK);
+			factory.register();
 		}
 	}
 }

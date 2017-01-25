@@ -15,6 +15,7 @@ import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.work.AbstractTask;
 import org.cytoscape.work.TaskMonitor;
 
+import edu.ucsf.rbvi.stEMAP.internal.model.MutationStats;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils.NodeType;
 
@@ -50,50 +51,75 @@ public class SelectTask extends AbstractTask {
 		List<CyNode> nodesToSelect = new ArrayList<>();
 		Color[] colorRange = new Color[4];
 		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
-		for (CyNode node: nodeList) {
-			NodeType type = manager.getNodeType(network, node);
-			switch (type) {
-			case MUTATION:
-				{
-					List<CyNode> genes = manager.getGeneNodes(network, node);
-					genes.add(node);
-					nodesToSelect.addAll(genes);
-					residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
-				}
-				break;
-			case MULTIMUTATION:
-				{
-					List<CyNode> genes = manager.getGeneNodes(network, node);
-					manager.selectNodes(network, genes);
-					List<CyNode> residueNodes = manager.getResidueNodes(network, node, true);
-					nodesToSelect.addAll(residueNodes);
-					residues.addAll(manager.getResidues(network, residueNodes));
-				}
-				break;
-			case GENE:
-				{
-					// Handle this carefully.  We want to get the color to map onto
-					// the residues
-					Map<Color, Set<String>> resCol = manager.getResiduesAndColors(view, node, colorRange, valueRange);
-					for (Color color: resCol.keySet()) {
-						if (colorMap.containsKey(color)) {
-							colorMap.get(color).addAll(resCol.get(color));
-						} else {
-							colorMap.put(color, resCol.get(color));
-						}
-						residues.addAll(resCol.get(color));
-					}
-				}
-				break;
-			case STRUCTURE:
-				{
-					nodesToSelect.add(node);
-					residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
-				}
+
+		// Check to see if we're using complex coloring.  If we are, we need to do the coloring
+		// in one shot, not node by node
+		boolean complexColoring = false;
+		if (manager.useComplexColoring()) {
+			complexColoring = true;
+			System.out.println("Complex coloring = true");
+			// Make sure we've only selected GENEs
+			for (CyNode node: nodeList) {
+				if (manager.getNodeType(network, node) == NodeType.GENE)
+					continue;
+				System.out.println("Node: "+node+" is not a GENE!");
+				complexColoring = false;
 				break;
 			}
-
 		}
+
+		if (!complexColoring) {
+			for (CyNode node: nodeList) {
+				NodeType type = manager.getNodeType(network, node);
+				switch (type) {
+				case MUTATION:
+					{
+						List<CyNode> genes = manager.getGeneNodes(network, node);
+						genes.add(node);
+						nodesToSelect.addAll(genes);
+						residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
+					}
+					break;
+				case MULTIMUTATION:
+					{
+						List<CyNode> genes = manager.getGeneNodes(network, node);
+						manager.selectNodes(network, genes);
+						List<CyNode> residueNodes = manager.getResidueNodes(network, node, true);
+						nodesToSelect.addAll(residueNodes);
+						residues.addAll(manager.getResidues(network, residueNodes));
+					}
+					break;
+				case GENE:
+					{
+						// Handle this carefully.  We want to get the color to map onto
+						// the residues
+						Map<Color, Set<String>> resCol = manager.getResiduesAndColors(view, node, colorRange, valueRange);
+						for (Color color: resCol.keySet()) {
+							if (colorMap.containsKey(color)) {
+								colorMap.get(color).addAll(resCol.get(color));
+							} else {
+								colorMap.put(color, resCol.get(color));
+							}
+							residues.addAll(resCol.get(color));
+						}
+					}
+					break;
+				case STRUCTURE:
+					{
+						nodesToSelect.add(node);
+						residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
+					}
+					break;
+				}
+			}
+		} else {
+			System.out.println("Using complex coloring");
+			colorRange = new Color[6]; // We actually use three color ranges for complexes
+			Map<Color, Set<String>> resCol = 
+							MutationStats.getComplexResiduesAndColors(manager, view, nodeList, colorRange);
+		}
+
+
 		manager.showSpheres(residues);
 		if (colorMap.size() > 0) {
 			manager.resolveDuplicates(colorMap);

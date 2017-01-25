@@ -26,6 +26,7 @@ import org.cytoscape.work.SynchronousTaskManager;
 import org.cytoscape.work.Task;
 import org.cytoscape.work.TaskIterator;
 
+import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanel;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
 
@@ -69,6 +70,13 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 			// OK, we've found the merged network
 			mergedNetwork = network;
 			manager.setMergedNetwork(network);
+			Double min = network.getRow(network).get(ModelUtils.MIN_WEIGHT_COLUMN, Double.class);
+			Double max = network.getRow(network).get(ModelUtils.MAX_WEIGHT_COLUMN, Double.class);
+			if (min != null)
+				manager.setMinWeight(min);
+			if (max != null)
+				manager.setMaxWeight(max);
+
 			// Get mergedNetworkView
 			for (CyNetworkView view: session.getNetworkViews()) {
 				if (view.getModel().equals(network)) {
@@ -98,6 +106,7 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 					pdbFile = file;
 				}
 			}
+			System.out.println("Loading pdb file");
 			if (manager.usePDBFile() && pdbFile != null) {
 				manager.loadPDB(pdbFile.getAbsolutePath(), manager.getChimeraCommands());
 			} else {
@@ -105,6 +114,8 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 			}
 
 			// Save for a possible future "reset" operation
+			ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), PDBFILE_COLUMN, String.class);
+			ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), MAPFILE_COLUMN, String.class);
 			mergedNetwork.getRow(mergedNetwork).set(PDBFILE_COLUMN, pdbFile.getAbsolutePath());
 			mergedNetwork.getRow(mergedNetwork).set(MAPFILE_COLUMN, mapFile.getAbsolutePath());
 		} else if (mergedNetwork != null) {
@@ -131,19 +142,17 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 			} catch (Exception ex) {
 				logger.error("Unable to syncrhonize colors: "+ex.getMessage());
 			}
-		}
 
-		try {
-			ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
-			ShowResultsPanel panel = new ShowResultsPanel(manager, showResults, true);
-			// Clean up step
-			panel.hidePanel();
-			if (showSidePanel) {
+			try {
+				ShowResultsPanelFactory showResults = manager.getService(ShowResultsPanelFactory.class);
+				ShowResultsPanel panel = new ShowResultsPanel(manager, showResults, true);
+				// Clean up step
+				panel.hidePanel();
 				// Show the panel
 				panel.run(null);
+			} catch (Exception ex) {
+				logger.error("Unable to launch results panel: "+ex.getMessage());
 			}
-		} catch (Exception ex) {
-			logger.error("Unable to launch results panel: "+ex.getMessage());
 		}
 
 	}

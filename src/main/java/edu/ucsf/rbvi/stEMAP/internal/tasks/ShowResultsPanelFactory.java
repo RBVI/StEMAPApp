@@ -50,7 +50,12 @@ public class ShowResultsPanelFactory extends AbstractNetworkViewTaskFactory impl
 	}
 
 	public void unregister() {
-		manager.unregisterService(this, NetworkViewTaskFactory.class);
+		try {
+			manager.unregisterService(this, NetworkViewTaskFactory.class);
+		} catch (Exception e) {
+			System.out.println("Side panel service not registered");
+			// probably not registered yet
+		}
 	}
 
 	public void register() {

@@ -1,16 +1,22 @@
 package edu.ucsf.rbvi.stEMAP.internal.model;
 
+import java.awt.Color;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNode;
+import org.cytoscape.view.model.CyNetworkView;
 
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
+import edu.ucsf.rbvi.stEMAP.internal.view.ColorScale;
 
 public class MutationStats { 
 	final static double MAD_SCALE = 1.4826;
@@ -79,7 +85,7 @@ public class MutationStats {
 		}
 	}
 
-	public List<CyEdge> getSignificantPositions(CyNetwork network, List<CyNode> complex) {
+	public static List<CyEdge> getSignificantPositions(CyNetwork network, List<CyNode> complex) {
 		// Get the threshold
 		double chisqThresh = 0.0;
 		// Get all of our data
@@ -112,6 +118,96 @@ public class MutationStats {
 		}
 
 		return significantEdges;
+	}
+
+	public static Map<Color, Set<String>> getComplexResiduesAndColors(StEMAPManager manager, 
+	                                                                  CyNetworkView view, List<CyNode> complex, 
+	                                                                  Color[] colorRange) {
+		CyNetwork net = view.getModel();
+		System.out.println("Getting significant edges");
+		List<CyEdge> edges = getSignificantPositions(net, complex);
+		System.out.println("Found "+edges.size()+" significant edges");
+
+		// Now we need to choose the color range based on whether we have all epistatic, all suppresive, or a mix
+		Map<String, List<Double>> valueMap = new HashMap<>();
+		Map<String, Integer> flagMap = new HashMap<>();
+
+		for (CyEdge edge: edges) {
+			// Get the residue
+			CyNode resNode = edge.getSource();
+			List<String> resSet = manager.getResidue(net, resNode);
+
+			// Add the value
+			Double weight = net.getRow(edge).get(ModelUtils.WEIGHT_COLUMN, Double.class);
+			int flag = -1;
+			if (weight > 0) flag = 1;
+			for (String residue: resSet) {
+				if (!valueMap.containsKey(residue)) {
+					valueMap.put(residue, new ArrayList<Double>());
+				}
+				valueMap.get(residue).add(weight);
+
+				// Set the flag
+				// -1 all suppressive
+				// 1 all epistatic
+				// 0 mixed
+				if (!flagMap.containsKey(residue)) {
+					flagMap.put(residue, flag);
+
+				// Only care if it's not already flagged as mixed
+				} else if ((flagMap.get(residue) != 0) && (flagMap.get(residue) != flag)) {
+					flagMap.put(residue, 0);
+				}
+			}
+		}
+
+		System.out.println("Value map has "+valueMap.size()+" residues");
+
+		double maxValue = manager.getMaxWeight();
+		double minValue = Math.abs(manager.getMinWeight());
+		double mixedValue = (maxValue + minValue)/2.0;
+		// Suppresive color scale
+		ColorScale sColor = new ColorScale(0.0, minValue, Color.WHITE, Color.WHITE, Color.CYAN, Color.WHITE);
+		colorRange[0] = Color.WHITE;
+		colorRange[1] = Color.CYAN;
+		// Epistatic color scale
+		ColorScale eColor = new ColorScale(0.0, maxValue, Color.WHITE, Color.WHITE, Color.YELLOW, Color.WHITE);
+		colorRange[2] = Color.WHITE;
+		colorRange[3] = Color.YELLOW;
+		// Mixed color scale
+		ColorScale mColor = new ColorScale(0.0, mixedValue, Color.WHITE, Color.WHITE, Color.GREEN, Color.WHITE);
+		colorRange[4] = Color.WHITE;
+		colorRange[5] = Color.GREEN;
+
+		// Now, we have two maps.  The flagMap tells us which color scheme to use, the absolute
+		// value of the scores for each residue tell us the strength of the color
+		Map<Color, Set<String>> resultMap = new HashMap<>();
+		for (String residue: valueMap.keySet()) {
+			ColorScale scale = null;
+			if (flagMap.get(residue) == 0) {
+				scale = mColor;
+			} else if (flagMap.get(residue) < 0) {
+				scale = sColor;
+			} else if (flagMap.get(residue) > 0) {
+				scale = eColor;
+			}
+
+			double score = 0.0;
+			for (double weight: valueMap.get(residue)) {
+				score += Math.abs(weight)/valueMap.get(residue).size();
+			}
+
+			// Get the color
+			Color color = (Color) scale.getPaint(score);
+			if (!resultMap.containsKey(color))
+				resultMap.put(color, new HashSet<>());
+
+			System.out.println("Adding "+residue+" to "+color);
+			resultMap.get(color).add(residue);
+		}
+
+		System.out.println("ResultMap has "+resultMap.size()+" colors");
+		return resultMap;
 	}
 
 	private static List<Double> absdev(List<Double> fVals, double med) {
