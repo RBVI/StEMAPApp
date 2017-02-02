@@ -1,7 +1,7 @@
 {
 	"PDBId": "1id3"
 	"UsePDBFile": true
-	"PDBFile": "1id3_withTails_H3chainAE_H4chainBF.pdb"
+	"PDBFile": "1id3.pdb"
 	"ChimeraCommands": "set bgColor gray;turn x 90; view; hide #1 atoms; show #1 ribbons; delete solvent; hide ions; color #1/A,E rgb(123,104,230) ribbon; color #1/B,F rgb(143,188,143); surface nucleic; transparency nucleic 70 target s; color #1/C,D,G,H,I,J rgb(150,150,150) target c,s,a; rungs nucleic; select clear"
 
 	"RINParameters": {

@@ -92,8 +92,12 @@ public class TreeLayout {
 			}
 
 			View<CyNode> nv = nodeMap.get(nodeName);
-			nv.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
-			nv.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, y);
+			if (nv == null) {
+				System.out.println("Error: no view for "+nodeName);
+			} else {
+				nv.setVisualProperty(BasicVisualLexicon.NODE_X_LOCATION, x);
+				nv.setVisualProperty(BasicVisualLexicon.NODE_Y_LOCATION, y);
+			}
 		}
 	}
 
