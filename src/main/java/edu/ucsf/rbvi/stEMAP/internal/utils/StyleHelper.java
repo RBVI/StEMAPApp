@@ -61,12 +61,14 @@ public class StyleHelper {
 						continuousFactory.createVisualMappingFunction("weight", 
 						                                              Double.class, 
 																					                BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
-		edgeColor.addPoint(minWeight, new BoundaryRangeValues(Color.CYAN, Color.CYAN, Color.CYAN));
-		edgeColor.addPoint(0.0, 
-		                   new BoundaryRangeValues(Color.WHITE, Color.WHITE, Color.WHITE));
+		edgeColor.addPoint(minWeight, new BoundaryRangeValues(StEMAPManager.MIN_COLOR, 
+		                                                      StEMAPManager.MIN_COLOR, StEMAPManager.MIN_COLOR));
+		edgeColor.addPoint(0.0, new BoundaryRangeValues(StEMAPManager.ZERO_COLOR, 
+		                                                StEMAPManager.ZERO_COLOR, StEMAPManager.ZERO_COLOR));
 		//edgeColor.addPoint(positiveCutoff, 
 		//                   new BoundaryRangeValues(Color.WHITE, Color.WHITE, Color.WHITE));
-		edgeColor.addPoint(maxWeight, new BoundaryRangeValues(Color.YELLOW, Color.YELLOW, Color.YELLOW));
+		edgeColor.addPoint(maxWeight, new BoundaryRangeValues(StEMAPManager.MAX_COLOR, 
+		                                                      StEMAPManager.MAX_COLOR, StEMAPManager.MAX_COLOR));
 		vs.addVisualMappingFunction(edgeColor);
 		vmm.addVisualStyle(vs);
 		vmm.setCurrentVisualStyle(vs);

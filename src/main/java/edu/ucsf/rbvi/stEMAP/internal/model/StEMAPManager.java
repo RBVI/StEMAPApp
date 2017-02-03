@@ -34,6 +34,7 @@ import org.cytoscape.work.TaskIterator;
 import org.cytoscape.work.TaskMonitor;
 import org.cytoscape.work.TaskObserver;
 
+import edu.ucsf.rbvi.stEMAP.internal.view.ColorScale;
 import edu.ucsf.rbvi.stEMAP.internal.view.ResultsPanel;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanel;
 import edu.ucsf.rbvi.stEMAP.internal.tasks.ShowResultsPanelFactory;
@@ -45,6 +46,18 @@ public class StEMAPManager implements TaskObserver {
 	final CyEventHelper eventHelper;
 	public static final String RIN_NETWORK = "RINNetwork.SUID";
 	public static final String CDT_NETWORK = "CDTNetwork.SUID";
+	public static Color MAX_COLOR = Color.YELLOW;
+	public static Color MIN_COLOR = Color.CYAN;
+	public static Color MIXED_COLOR = Color.GREEN;
+	public static Color ZERO_COLOR = Color.WHITE;
+	public static Color MISSING_COLOR = Color.GRAY;
+	public ColorScale sColor = null;
+	public ColorScale eColor = null;
+	public ColorScale mColor = null;
+
+	public Color[] heatMapRange = {ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR};
+	public Color[] mixedMapRange = {ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR, ZERO_COLOR, MIXED_COLOR};
+
 	CommandExecutorTaskFactory commandTaskFactory = null;
 	AvailableCommands availableCommands = null;
 	SynchronousTaskManager<?> taskManager = null;
@@ -67,6 +80,7 @@ public class StEMAPManager implements TaskObserver {
 	boolean useComplexColoring = false;
 	double minWeight = 0.0;
 	double maxWeight = 0.0;
+	double scale = 1.0;
 
 	File mapFile = null;
 	File pdbFile = null;
@@ -194,7 +208,7 @@ public class StEMAPManager implements TaskObserver {
 		}
 
 		if (autoAnnotate && genesChanged) {
-			updateChimera();
+			updateChimera(true);
 		}
 	}
 
@@ -261,8 +275,7 @@ public class StEMAPManager implements TaskObserver {
 		return edges;
 	}
 
-	public Map<Color, Set<String>> getResiduesAndColors(CyNetworkView netView, CyNode node, 
-	                                                     Color[] colorRange, double[] valueRange) {
+	public Map<Color, Set<String>> getResiduesAndColors(CyNetworkView netView, CyNode node) {
 		Map<Color, Set<String>> colorMap = new HashMap<>();
 
 		CyNetwork net = netView.getModel();
@@ -280,13 +293,18 @@ public class StEMAPManager implements TaskObserver {
 					if (mutType != null && (mutType.equals("del") || mutType.equals("multiple")))
 						continue;
 				}
-				View<CyEdge> ev = netView.getEdgeView(edge);
-				Color c = (Color)ev.getVisualProperty(BasicVisualLexicon.EDGE_STROKE_UNSELECTED_PAINT);
-				if (!colorMap.containsKey(c)) {
-					colorMap.put(c, new HashSet<String>());
+
+				Color color;
+				if (weight > 0.0) {
+					color = (Color) getEColorScale().getPaint(weight*scale);
+				} else {
+					color = (Color) getSColorScale().getPaint(Math.abs(weight)*scale);
 				}
-				colorMap.get(c).addAll(resSet);
-				updateRanges(weight, c, colorRange, valueRange);
+				if (!colorMap.containsKey(color))
+					colorMap.put(color, new HashSet<>());
+
+				// System.out.println("Adding "+residue+" to "+color);
+				colorMap.get(color).addAll(resSet);
 			}
 		}
 		return colorMap;
@@ -435,8 +453,8 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	public void showSpheres(List<String> residues) {
-		System.out.println("showSpheres: "+residues.size()+" residues");
-		System.out.println("First residue = "+residues.get(0));
+		// System.out.println("showSpheres: "+residues.size()+" residues");
+		// System.out.println("First residue = "+residues.get(0));
 		if (lastResidues != null) {
 			chimeraCommand("hide "+lastResidues);
 		}
@@ -457,13 +475,13 @@ public class StEMAPManager implements TaskObserver {
 			return;
 		}
 
-		System.out.println("showSpheres: converting to string ");
+		// System.out.println("showSpheres: converting to string ");
 		try {
 		lastResidues = convertResiduesToX(residues.toArray(new String[1]));
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		System.out.println("lastResidues = "+lastResidues);
+		// System.out.println("lastResidues = "+lastResidues);
 
 		// System.out.println("Sending command: sel "+lastResidues);
 		// It may be redundant, but select the residues (hopefully again)
@@ -471,7 +489,7 @@ public class StEMAPManager implements TaskObserver {
 		// System.out.println("chimera: sel "+lastResidues);
 
 		// Change to sphere
-		System.out.println("Sending command: disp "+lastResidues);
+		// System.out.println("Sending command: disp "+lastResidues);
 		chimeraCommand("disp "+lastResidues);
 		// System.out.println("Sending command: repr sphere sel");
 		// chimeraCommand("style "+lastResidues+" sphere");
@@ -539,6 +557,12 @@ public class StEMAPManager implements TaskObserver {
 		return spec;
 	}
 
+	// Called form ResultsPanel to update color of spheres
+	public void updateSpheres() {
+		if (lastResidues != null)
+			updateChimera(false);
+	}
+
 	public void chimeraCommand(String command) {
 		Map<String, Object> args = new HashMap<>();
 		args.put("command", command);
@@ -587,9 +611,11 @@ public class StEMAPManager implements TaskObserver {
 
 	public boolean useComplexColoring() { return useComplexColoring; }
 	public void setUseComplexColoring(boolean complexColoring) { 
-		System.out.println("Setting useComplexColoring to "+complexColoring);
 		this.useComplexColoring = complexColoring; 
 	}
+
+	public double getScale() { return scale; }
+	public void setScale(double scale) { this.scale = scale; }
 
 	public double getMinWeight() { return minWeight; }
 	public void setMinWeight(double min) { minWeight = min; }
@@ -603,6 +629,27 @@ public class StEMAPManager implements TaskObserver {
 		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), ModelUtils.MAX_WEIGHT_COLUMN, Double.class);
 		mergedNetwork.getRow(mergedNetwork).set(ModelUtils.MIN_WEIGHT_COLUMN, min);
 		mergedNetwork.getRow(mergedNetwork).set(ModelUtils.MAX_WEIGHT_COLUMN, max);
+	}
+
+	public ColorScale getSColorScale() {
+		if (sColor == null) {
+			sColor = new ColorScale(0.0, Math.abs(minWeight), ZERO_COLOR, ZERO_COLOR, MIN_COLOR, ZERO_COLOR);
+		}
+		return sColor;
+	}
+
+	public ColorScale getEColorScale() {
+		if (eColor == null) {
+			eColor = new ColorScale(0.0, maxWeight, ZERO_COLOR, ZERO_COLOR, MAX_COLOR, ZERO_COLOR);
+		}
+		return eColor;
+	}
+
+	public ColorScale getMColorScale() {
+		if (mColor == null) {
+			mColor = new ColorScale(0.0, (maxWeight+Math.abs(minWeight))/2.0, ZERO_COLOR, ZERO_COLOR, MIXED_COLOR, ZERO_COLOR);
+		}
+		return mColor;
 	}
 
 	public void flushEvents() {
@@ -682,10 +729,9 @@ public class StEMAPManager implements TaskObserver {
 		}
 	}
 
-	private void updateChimera() {
+	private void updateChimera(boolean show) {
 		Map<Color, Set<String>> cm = new HashMap<>();
 		List<String> residues = new ArrayList<>();
-		Color[] colorRange = new Color[4];
 		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
 
 		// Check to see if we're using complex coloring.  If we are, we need to do the coloring
@@ -693,21 +739,21 @@ public class StEMAPManager implements TaskObserver {
 		boolean complexColoring = false;
 		if (useComplexColoring()) {
 			complexColoring = true;
-			System.out.println("Complex coloring = true");
 			// Make sure we've only selected GENEs
 			for (CyNode node: selectedGenes) {
 				if (getNodeType(mergedNetwork, node) == NodeType.GENE)
 					continue;
-				System.out.println("Node: "+node+" is not a GENE!");
 				complexColoring = false;
 				break;
 			}
 		}
 
+		Color[] colorRange = null;
 		Map<Color, Set<String>> resCol;
 		if (!complexColoring) {
+			colorRange = heatMapRange;
 			for (CyNode node: selectedGenes) {
-				resCol = getResiduesAndColors(mergedNetworkView, node, colorRange, valueRange);
+				resCol = getResiduesAndColors(mergedNetworkView, node);
 
 				for (Color color: resCol.keySet()) {
 					if (cm.containsKey(color)) {
@@ -719,11 +765,11 @@ public class StEMAPManager implements TaskObserver {
 				}
 			}
 		} else {
-			System.out.println("Using complex coloring");
-			colorRange = new Color[6]; // We actually use three color ranges for complexes
+			colorRange = mixedMapRange;
+			// System.out.println("Using complex coloring");
 			resCol = MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, 
-							                                           new ArrayList<CyNode>(selectedGenes), colorRange);
-			System.out.println("resCol has "+resCol.size()+" colors");
+							                                           new ArrayList<CyNode>(selectedGenes), scale);
+			// System.out.println("resCol has "+resCol.size()+" colors");
 			for (Color color: resCol.keySet()) {
 				if (cm.containsKey(color)) {
 					cm.get(color).addAll(resCol.get(color));
@@ -734,8 +780,9 @@ public class StEMAPManager implements TaskObserver {
 			}
 		}
 
-		System.out.println("residues has "+residues.size()+" residues");
-		showSpheres(residues);
+		// System.out.println("residues has "+residues.size()+" residues");
+		if (show)
+			showSpheres(residues);
 
 		if (cm != null && cm.size() > 0) {
 			try {
@@ -746,37 +793,6 @@ public class StEMAPManager implements TaskObserver {
 		}
 	}
 
-	private void updateRanges(double weight, Color color, Color[] colorRange, double[] valueRange) {
-		// System.out.println("updateRanges: "+weight+", "+color);
-		// System.out.println("valueRange: "+valueRange[0]+"-"+valueRange[1]+", "+valueRange[2]+"-"+valueRange[3]);
-		// System.out.println("colorRange: "+colorRange[0]+"-"+colorRange[1]+", "+colorRange[2]+"-"+colorRange[3]);
-		if (weight < 0.0) {
-			if (weight < valueRange[0]) {
-				valueRange[0] = weight;
-				colorRange[0] = color;
-				// System.out.println("new low negative color: "+color);
-			} 
-			
-			if (weight > valueRange[1]) {
-				valueRange[1] = weight;
-				colorRange[1] = color;
-				// System.out.println("new high negative color: "+color);
-			}
-		} else {
-			if (weight < valueRange[2]) {
-				valueRange[2] = weight;
-				colorRange[2] = color;
-				// System.out.println("new low positive color: "+color);
-			} 
-			
-			if (weight > valueRange[3]) {
-				valueRange[3] = weight;
-				colorRange[3] = color;
-				// System.out.println("new high positive color: "+color);
-			}
-		}
-	}
-
 	// Quantize the colors a little to compress the map
 	static int COLORS = 5;
 	public Map<Color, Set<String>> compressMap(Map<Color, Set<String>> cmap, Color[] colorRange) {
@@ -784,8 +800,9 @@ public class StEMAPManager implements TaskObserver {
 		List<Color> colorList = new ArrayList<Color>();
 		makeRange(colorList, colorRange[0], colorRange[1], COLORS);
 		makeRange(colorList, colorRange[2], colorRange[3], COLORS);
-		if (colorRange.length == 6)
+		if (colorRange.length == 6) {
 			makeRange(colorList, colorRange[4], colorRange[5], COLORS);
+		}
 		for (Color clr: colorList) {
 			newMap.put(clr, new HashSet<String>());
 		}
@@ -893,11 +910,11 @@ public class StEMAPManager implements TaskObserver {
 			String nameA = ModelUtils.getName(mergedNetwork, a);
 			String nameB = ModelUtils.getName(mergedNetwork, b);
 			if (!orderMap.containsKey(nameA)) {
-				System.out.println("Can't find entry for "+nameA);
+				// System.out.println("Can't find entry for "+nameA);
 				return -1;
 			}
 			if (!orderMap.containsKey(nameB)) {
-				System.out.println("Can't find entry for "+nameB);
+				// System.out.println("Can't find entry for "+nameB);
 				return 1;
 			}
 			Integer orderA = orderMap.get(nameA);

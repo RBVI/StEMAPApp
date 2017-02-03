@@ -71,6 +71,7 @@ public class ColorScale implements PaintScale {
 								 final Color zeroColor,
 								 final Color upperColor) {
 		final boolean hasZero = lowerBound < -EPSILON && upperBound > EPSILON && zeroColor != null;
+		// System.out.println("getPaint("+value+","+lowerBound+","+upperBound+","+lowerColor+","+zeroColor+","+upperColor+")");
 		
 		if (hasZero && value < EPSILON && value > -EPSILON)
 			return zeroColor;

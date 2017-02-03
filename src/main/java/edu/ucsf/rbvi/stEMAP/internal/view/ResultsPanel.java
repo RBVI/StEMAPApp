@@ -9,10 +9,13 @@ import java.awt.event.ItemListener;
 import java.awt.image.BufferedImage;
 
 import java.util.ArrayList;
+import java.util.Dictionary;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
@@ -21,7 +24,10 @@ import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSlider;
 import javax.swing.SwingUtilities;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.apache.log4j.Logger;
 import org.jfree.data.general.HeatMapDataset;
@@ -39,13 +45,14 @@ import org.cytoscape.model.CyTableUtil;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.HeatMapData;
 
-public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemListener {
+public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemListener, ChangeListener {
 	StEMAPManager manager;
 	final CyNetwork network;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
 	JPanel resultsPanel;
 	JScrollPane scroller;
 	JLabel imageLabel;
+	HeatMap heatMap;
 
 	public ResultsPanel(StEMAPManager manager) {
 		this.manager = manager;
@@ -59,6 +66,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		createAutoAnnotateCheckbox(buttonBox);
 		createIgnoreMultipleCheckbox(buttonBox);
 		createComplexCheckbox(buttonBox);
+		createColorScale(buttonBox);
 		buttonBox.add(Box.createRigidArea(new Dimension(0,10)));
 		add(buttonBox, BorderLayout.SOUTH);
 	}
@@ -98,7 +106,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 			return scroller;
 		}
 		// Create our initial chart
-		HeatMap heatMap = new HeatMap(manager, data);
+		heatMap = new HeatMap(manager, data);
 		JFreeChart chart = null;
 		try {
 			chart = heatMap.createHeatMap();
@@ -152,6 +160,32 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		buttonBox.add(complexCB);
 	}
 
+	private void createColorScale(JPanel buttonBox) {
+		JLabel scaleLabel = new JLabel("Color intensity:");
+		scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
+		buttonBox.add(scaleLabel);
+		JSlider scaleSlider = new JSlider(0, 500, 100);
+		scaleSlider.addChangeListener(this);
+		Dictionary<Integer, JLabel> labelTable = new Hashtable<>();
+		labelTable.put(0, sliderLabel("0"));
+		labelTable.put(100, sliderLabel("1"));
+		labelTable.put(200, sliderLabel("2"));
+		labelTable.put(300, sliderLabel("3"));
+		labelTable.put(400, sliderLabel("4"));
+		labelTable.put(500, sliderLabel("5"));
+		scaleSlider.setLabelTable(labelTable);
+		scaleSlider.setPaintLabels(true);
+		JPanel sliderPanel = new JPanel();
+		sliderPanel.add(scaleSlider);
+		buttonBox.add(sliderPanel);
+	}
+
+	private JLabel sliderLabel(String label) {
+		JLabel lbl = new JLabel(label);
+		lbl.setFont(lbl.getFont().deriveFont(8.0f));
+		return lbl;
+	}
+
 	@Override
 	public Component getComponent() {
 		return this;
@@ -168,6 +202,20 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 
 	@Override
 	public String getTitle() { return "StEMAP HeatMap"; }
+
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		Object s = e.getSource();
+		if (s instanceof JSlider) {
+			JSlider slider = (JSlider)s;
+			// Scale to 0-5
+			double sValue = (((double)slider.getValue())/100.0);
+			manager.setScale(sValue);
+		}
+
+		heatMap.updatePlot();
+		manager.updateSpheres();
+	}
 
 	@Override
 	public void itemStateChanged(ItemEvent e) {

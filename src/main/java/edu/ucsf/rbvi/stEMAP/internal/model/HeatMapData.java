@@ -31,8 +31,8 @@ public class HeatMapData {
 	List<CyNode> mutations;
 	Color[] colorMap;
 	DefaultXYZDataset data;
-	double minZ = Double.MAX_VALUE;
-	double maxZ = Double.MIN_VALUE;
+	double minZ = 0.0;
+	double maxZ = 0.0;
 	String[] rowHeaders = null;
 	String[] columnHeaders = null;
 
@@ -91,8 +91,10 @@ public class HeatMapData {
 		final double[][] seriesData = new double[3][mutations.size()*genes.size()];
 
 		colorMap = new Color[4];
-		colorMap[1] = Color.WHITE;
-		colorMap[3] = Color.GRAY;
+		colorMap[0] = StEMAPManager.MAX_COLOR;
+		colorMap[1] = StEMAPManager.ZERO_COLOR;
+		colorMap[2] = StEMAPManager.MIN_COLOR;
+		colorMap[3] = StEMAPManager.MISSING_COLOR;
 
 		for (int column = 0; column < genes.size(); column++) {
 			CyNode columnNode = genes.get(column);
@@ -109,23 +111,11 @@ public class HeatMapData {
 					if (dWeight == null)
 						continue;
 					double weight = dWeight.doubleValue();
-					Color color = getColor(edges.get(0));
-					if (weight > maxZ) {
-						maxZ = weight;
-						colorMap[0] = color;
-					} else if (weight < minZ) {
-						minZ = weight;
-						colorMap[2] = color;
-					} else if (weight == 0.0) {
-						colorMap[1] = color;
-					}
-					minZ = Math.min(weight, minZ);
 					seriesData[2][z] = weight;
 				}
 				data.addSeries(seriesLabel, seriesData);
 			}
 		}
-
 	}
 
 	public void update(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
@@ -135,11 +125,11 @@ public class HeatMapData {
 	public XYZDataset getData() { return data; }
 
 	public double getMaximumZ() {
-		return maxZ;
+		return manager.getMaxWeight();
 	}
 
 	public double getMinimumZ() {
-		return minZ;
+		return manager.getMinWeight();
 	}
 
 	public String[] getColumnHeaders() {

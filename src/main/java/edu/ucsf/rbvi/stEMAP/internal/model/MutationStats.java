@@ -122,11 +122,11 @@ public class MutationStats {
 
 	public static Map<Color, Set<String>> getComplexResiduesAndColors(StEMAPManager manager, 
 	                                                                  CyNetworkView view, List<CyNode> complex, 
-	                                                                  Color[] colorRange) {
+	                                                                  double scale) {
 		CyNetwork net = view.getModel();
-		System.out.println("Getting significant edges");
+		// System.out.println("Getting significant edges");
 		List<CyEdge> edges = getSignificantPositions(net, complex);
-		System.out.println("Found "+edges.size()+" significant edges");
+		// System.out.println("Found "+edges.size()+" significant edges");
 
 		// Now we need to choose the color range based on whether we have all epistatic, all suppresive, or a mix
 		Map<String, List<Double>> valueMap = new HashMap<>();
@@ -161,35 +161,19 @@ public class MutationStats {
 			}
 		}
 
-		System.out.println("Value map has "+valueMap.size()+" residues");
-
-		double maxValue = manager.getMaxWeight();
-		double minValue = Math.abs(manager.getMinWeight());
-		double mixedValue = (maxValue + minValue)/2.0;
-		// Suppresive color scale
-		ColorScale sColor = new ColorScale(0.0, minValue, Color.WHITE, Color.WHITE, Color.CYAN, Color.WHITE);
-		colorRange[0] = Color.WHITE;
-		colorRange[1] = Color.CYAN;
-		// Epistatic color scale
-		ColorScale eColor = new ColorScale(0.0, maxValue, Color.WHITE, Color.WHITE, Color.YELLOW, Color.WHITE);
-		colorRange[2] = Color.WHITE;
-		colorRange[3] = Color.YELLOW;
-		// Mixed color scale
-		ColorScale mColor = new ColorScale(0.0, mixedValue, Color.WHITE, Color.WHITE, Color.GREEN, Color.WHITE);
-		colorRange[4] = Color.WHITE;
-		colorRange[5] = Color.GREEN;
+		// System.out.println("Value map has "+valueMap.size()+" residues");
 
 		// Now, we have two maps.  The flagMap tells us which color scheme to use, the absolute
 		// value of the scores for each residue tell us the strength of the color
 		Map<Color, Set<String>> resultMap = new HashMap<>();
 		for (String residue: valueMap.keySet()) {
-			ColorScale scale = null;
+			ColorScale colorScale = null;
 			if (flagMap.get(residue) == 0) {
-				scale = mColor;
+				colorScale = manager.getMColorScale();
 			} else if (flagMap.get(residue) < 0) {
-				scale = sColor;
+				colorScale = manager.getSColorScale();
 			} else if (flagMap.get(residue) > 0) {
-				scale = eColor;
+				colorScale = manager.getEColorScale();
 			}
 
 			double score = 0.0;
@@ -198,15 +182,14 @@ public class MutationStats {
 			}
 
 			// Get the color
-			Color color = (Color) scale.getPaint(score);
+			Color color = (Color) colorScale.getPaint(score*scale);
 			if (!resultMap.containsKey(color))
 				resultMap.put(color, new HashSet<>());
 
-			System.out.println("Adding "+residue+" to "+color);
 			resultMap.get(color).add(residue);
 		}
 
-		System.out.println("ResultMap has "+resultMap.size()+" colors");
+		// System.out.println("ResultMap has "+resultMap.size()+" colors");
 		return resultMap;
 	}
 

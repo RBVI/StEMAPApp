@@ -35,6 +35,7 @@ public class HeatMap
 {
 	private HeatMapData heatMapData;
 	private StEMAPManager manager;
+	private XYPlot plot;
 
 	/**
 	 * Initialize new heatmap
@@ -82,19 +83,9 @@ public class HeatMap
 		yAxis.setUpperMargin(0.0);
 		yAxis.setInverted(true);
 
-		final XYBlockRenderer renderer = new XYBlockRenderer();
+		final XYBlockRenderer renderer = createRenderer();
 
-		// Set up tooltips
-		// renderer.setBaseToolTipGenerator(new HeatmapToolTipGenerator(heatMapData));
-		renderer.setBaseCreateEntities(true);
-
-		Color[] colors = heatMapData.getColorMap();
-		double minValue = heatMapData.getMinimumZ();
-		double maxValue = heatMapData.getMaximumZ();
-		final ColorScale scale = new ColorScale(minValue, maxValue, colors[2], colors[1], colors[0], colors[3]);
-		renderer.setPaintScale(scale);
-
-		final XYPlot plot = new XYPlot(heatMapData.getData(), xAxis, yAxis, renderer);
+		plot = new XYPlot(heatMapData.getData(), xAxis, yAxis, renderer);
 		plot.setDomainAxis(xAxis);
 		plot.setDomainAxisLocation(AxisLocation.TOP_OR_LEFT);
 		plot.setDomainGridlinesVisible(false);
@@ -119,6 +110,27 @@ public class HeatMap
 
 		return chart;
 
+	}
+
+	public void updatePlot() {
+		XYBlockRenderer renderer = createRenderer();
+		plot.setRenderer(renderer);
+	}
+
+	XYBlockRenderer createRenderer() {
+		final XYBlockRenderer renderer = new XYBlockRenderer();
+
+		// Set up tooltips
+		// renderer.setBaseToolTipGenerator(new HeatmapToolTipGenerator(heatMapData));
+		renderer.setBaseCreateEntities(true);
+
+		Color[] colors = heatMapData.getColorMap();
+		double minValue = heatMapData.getMinimumZ();
+		double maxValue = heatMapData.getMaximumZ();
+		double scaleFactor = manager.getScale();
+		final ColorScale scale = new ColorScale(minValue/scaleFactor, maxValue/scaleFactor, colors[2], colors[1], colors[0], colors[3]);
+		renderer.setPaintScale(scale);
+		return renderer;
 	}
 
 }

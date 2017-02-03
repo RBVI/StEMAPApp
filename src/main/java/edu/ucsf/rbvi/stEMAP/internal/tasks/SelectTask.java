@@ -49,8 +49,7 @@ public class SelectTask extends AbstractTask {
 		Map<Color, Set<String>> colorMap = new HashMap<>();
 		List<String> residues = new ArrayList<>();
 		List<CyNode> nodesToSelect = new ArrayList<>();
-		Color[] colorRange = new Color[4];
-		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
+		Color[] colorRange = null;
 
 		// Check to see if we're using complex coloring.  If we are, we need to do the coloring
 		// in one shot, not node by node
@@ -69,6 +68,7 @@ public class SelectTask extends AbstractTask {
 		}
 
 		if (!complexColoring) {
+			colorRange = manager.heatMapRange;
 			for (CyNode node: nodeList) {
 				NodeType type = manager.getNodeType(network, node);
 				switch (type) {
@@ -93,7 +93,7 @@ public class SelectTask extends AbstractTask {
 					{
 						// Handle this carefully.  We want to get the color to map onto
 						// the residues
-						Map<Color, Set<String>> resCol = manager.getResiduesAndColors(view, node, colorRange, valueRange);
+						Map<Color, Set<String>> resCol = manager.getResiduesAndColors(view, node);
 						for (Color color: resCol.keySet()) {
 							if (colorMap.containsKey(color)) {
 								colorMap.get(color).addAll(resCol.get(color));
@@ -113,10 +113,9 @@ public class SelectTask extends AbstractTask {
 				}
 			}
 		} else {
-			System.out.println("Using complex coloring");
-			colorRange = new Color[6]; // We actually use three color ranges for complexes
+			colorRange = manager.mixedMapRange;
 			Map<Color, Set<String>> resCol = 
-							MutationStats.getComplexResiduesAndColors(manager, view, nodeList, colorRange);
+							MutationStats.getComplexResiduesAndColors(manager, view, nodeList, manager.getScale());
 		}
 
 
