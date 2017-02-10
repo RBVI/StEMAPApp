@@ -365,6 +365,7 @@ public class MergeTask extends AbstractTask {
 		manager.getService(CyNetworkManager.class).addNetwork(cdtSubNetwork);
 		manager.getService(CyNetworkViewManager.class).addNetworkView(cdtNetworkView);
 		manager.setMergedNetwork(cdtSubNetwork);
+		manager.setCDTNetwork(cdtNetwork);
 		manager.setMergedNetworkView(cdtNetworkView);
 		manager.setMinMax(minWeight, maxWeight);
 

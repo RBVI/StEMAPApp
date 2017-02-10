@@ -13,6 +13,7 @@ import edu.ucsf.rbvi.stEMAP.internal.model.HeatMapData;
 
 class HeatMapToolTipListener implements ChartMouseListener {
 	final XYZDataset xyzDataset;
+	final HeatMapData hmData;
 	final String[] seriesHeaders;
 	final String[] itemHeaders;
 	int lastItem = -1;
@@ -21,6 +22,7 @@ class HeatMapToolTipListener implements ChartMouseListener {
 
 	public HeatMapToolTipListener(JComponent chart, HeatMapData hmData) {
 		super();
+		this.hmData = hmData;
 		this.xyzDataset = hmData.getData();
 		this.seriesHeaders = hmData.getColumnHeaders();
 		this.itemHeaders = hmData.getRowHeaders();
@@ -50,7 +52,17 @@ class HeatMapToolTipListener implements ChartMouseListener {
 		int row = item%itemHeaders.length;
 		String gene = itemHeaders[row];
 		double value = xyzDataset.getZValue(series,item);
-		chart.setToolTipText("<html><span style=\"color:blue\">"+mutation+"</span>&rarr;<span style=\"color:blue\">"+gene+"</span>: <b>"+value+"</b></html>");
+		if (Double.isNaN(value)) {
+			value = hmData.getWeight(gene, mutation);
+			chart.setToolTipText("<html><span style=\"color:blue\">"+
+			                      mutation+"</span>&rarr;<span style=\"color:blue\">"+
+						                gene+"</span>: <span style=\"color:gray\"><i>"+
+														value+"</i></span></html>");
+		} else {
+			chart.setToolTipText("<html><span style=\"color:blue\">"+
+			                      mutation+"</span>&rarr;<span style=\"color:blue\">"+
+						                gene+"</span>: <b>"+value+"</b></html>");
+		}
 		ToolTipManager.sharedInstance().mouseMoved(event.getTrigger());
 	}
 

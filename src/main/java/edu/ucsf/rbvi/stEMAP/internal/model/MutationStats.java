@@ -16,6 +16,7 @@ import org.cytoscape.model.CyNode;
 import org.cytoscape.view.model.CyNetworkView;
 
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
+import edu.ucsf.rbvi.stEMAP.internal.utils.StructureUtils;
 import edu.ucsf.rbvi.stEMAP.internal.view.ColorScale;
 
 public class MutationStats { 
@@ -135,7 +136,7 @@ public class MutationStats {
 		for (CyEdge edge: edges) {
 			// Get the residue
 			CyNode resNode = edge.getSource();
-			List<String> resSet = manager.getResidue(net, resNode);
+			List<String> resSet = StructureUtils.getResidue(manager, net, resNode);
 
 			// Add the value
 			Double weight = net.getRow(edge).get(ModelUtils.WEIGHT_COLUMN, Double.class);

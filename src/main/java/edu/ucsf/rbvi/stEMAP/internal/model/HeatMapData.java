@@ -21,6 +21,7 @@ import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
+import edu.ucsf.rbvi.stEMAP.internal.utils.StructureUtils;
 
 public class HeatMapData {
 	StEMAPManager manager;
@@ -35,15 +36,15 @@ public class HeatMapData {
 	double maxZ = 0.0;
 	String[] rowHeaders = null;
 	String[] columnHeaders = null;
+	Map<String, CyNode> nameMap = null;
 
 	public HeatMapData(StEMAPManager manager, Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
 		this.networkView = manager.getMergedNetworkView();
 
+		nameMap = new HashMap<String, CyNode>();
 		init(selectedGenes, selectedMutations);
-		rowHeaders = createRowHeaders();
-		columnHeaders = createColumnHeaders();
 	}
 
 	private void init(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
@@ -56,14 +57,14 @@ public class HeatMapData {
 			// Add connections
 			// For each selected Gene, add the connected mutations
 			for (CyNode node: selectedGenes) {
-				for (CyNode resNode: manager.getResidueNodes(network, node, false)) {
+				for (CyNode resNode: StructureUtils.getResidueNodes(manager, network, node, false)) {
 					if (!mutations.contains(resNode))
 						mutations.add(resNode);
 				}
 			}
 			// For each mutation, add the connected Genes
 			for (CyNode node: selectedMutations) {
-				for (CyNode gNode: manager.getGeneNodes(network, node)) {
+				for (CyNode gNode: ModelUtils.getGeneNodes(network, node)) {
 					if (!genes.contains(gNode))
 						genes.add(gNode);
 				}
@@ -83,8 +84,8 @@ public class HeatMapData {
 
 		// Order the genes and mutations to have the same order
 		// as in the cluster
-		manager.orderResidues(mutations);
-		manager.orderGenes(genes);
+		ModelUtils.orderResidues(network, mutations);
+		ModelUtils.orderGenes(network, genes);
 
 		// Build matrix
 		data = new DefaultXYZDataset();
@@ -96,9 +97,14 @@ public class HeatMapData {
 		colorMap[2] = StEMAPManager.MIN_COLOR;
 		colorMap[3] = StEMAPManager.MISSING_COLOR;
 
+		columnHeaders = new String[genes.size()];
+		rowHeaders = new String[mutations.size()];
+
 		for (int column = 0; column < genes.size(); column++) {
 			CyNode columnNode = genes.get(column);
 			String seriesLabel = ModelUtils.getName(manager.getMergedNetwork(), columnNode);
+			nameMap.put(seriesLabel, columnNode);
+			columnHeaders[column] = seriesLabel;
 			for (int row = 0; row < mutations.size(); row++) {
 				int z = mutations.size()*column+row;
 				seriesData[0][z] = column;
@@ -116,6 +122,26 @@ public class HeatMapData {
 				data.addSeries(seriesLabel, seriesData);
 			}
 		}
+
+		for (int row = 0; row < rowHeaders.length; row++) {
+			CyNode node = mutations.get(row);
+			String name = ModelUtils.getName(network, node);
+			nameMap.put(name, node);
+			rowHeaders[row] = name;
+		}
+	}
+
+	public double getWeight(String gene, String mutation) {
+		CyNetwork cdtNetwork = manager.getCDTNetwork();
+		CyNode node1 = nameMap.get(gene);
+		CyNode node2 = nameMap.get(mutation);
+		if (node1 != null && node2 != null) {
+			List<CyEdge> edges = cdtNetwork.getConnectingEdgeList(node1, node2, CyEdge.Type.ANY);
+			if (edges != null) {
+				return cdtNetwork.getRow(edges.get(0)).get(ModelUtils.WEIGHT_COLUMN, Double.class);
+			}
+		}
+		return Double.NaN;
 	}
 
 	public void update(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
@@ -136,26 +162,8 @@ public class HeatMapData {
 		return columnHeaders;
 	}
 
-	public String[] createColumnHeaders() {
-		String[] h = new String[genes.size()];
-		for (int column = 0; column < h.length; column++) {
-			CyNode node = genes.get(column);
-			h[column] = ModelUtils.getName(network, node);
-		}
-		return h;
-	}
-
 	public String[] getRowHeaders() {
 		return rowHeaders;
-	}
-
-	public String[] createRowHeaders() {
-		String[] h = new String[mutations.size()];
-		for (int row = 0; row < h.length; row++) {
-			CyNode node = mutations.get(row);
-			h[row] = ModelUtils.getName(network, node);
-		}
-		return h;
 	}
 
 	public Color[] getColorMap() { return colorMap; }

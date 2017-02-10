@@ -16,6 +16,7 @@ import org.apache.log4j.Logger;
 import org.cytoscape.application.CyUserLog;
 import org.cytoscape.application.swing.CytoPanelComponent;
 import org.cytoscape.model.CyNetwork;
+import org.cytoscape.model.CyNetworkManager;
 import org.cytoscape.session.CySession;
 import org.cytoscape.session.events.SessionAboutToBeSavedEvent;
 import org.cytoscape.session.events.SessionAboutToBeSavedListener;
@@ -64,8 +65,13 @@ public class SessionListener implements SessionAboutToBeSavedListener, SessionLo
 		for (CyNetwork network: session.getNetworks()) {
 			if (network.getDefaultNetworkTable().getColumn(StEMAPManager.CDT_NETWORK) == null)
 				continue;
-			if (network.getRow(network).get(StEMAPManager.CDT_NETWORK, Long.class) == null)
+			Long cdtSUID = network.getRow(network).get(StEMAPManager.CDT_NETWORK, Long.class);
+			if (cdtSUID == null)
 				continue;
+
+			CyNetworkManager netManager = manager.getService(CyNetworkManager.class);
+			CyNetwork cdtNetwork = netManager.getNetwork(cdtSUID);
+			manager.setCDTNetwork(cdtNetwork);
 
 			// OK, we've found the merged network
 			mergedNetwork = network;

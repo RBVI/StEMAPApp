@@ -17,7 +17,10 @@ import org.cytoscape.work.TaskMonitor;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.MutationStats;
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
+import edu.ucsf.rbvi.stEMAP.internal.utils.ColorUtils;
+import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils.NodeType;
+import edu.ucsf.rbvi.stEMAP.internal.utils.StructureUtils;
 
 public class SelectTask extends AbstractTask {
 	final StEMAPManager manager;
@@ -56,12 +59,10 @@ public class SelectTask extends AbstractTask {
 		boolean complexColoring = false;
 		if (manager.useComplexColoring()) {
 			complexColoring = true;
-			System.out.println("Complex coloring = true");
 			// Make sure we've only selected GENEs
 			for (CyNode node: nodeList) {
-				if (manager.getNodeType(network, node) == NodeType.GENE)
+				if (ModelUtils.getNodeType(network, node) == NodeType.GENE)
 					continue;
-				System.out.println("Node: "+node+" is not a GENE!");
 				complexColoring = false;
 				break;
 			}
@@ -70,30 +71,30 @@ public class SelectTask extends AbstractTask {
 		if (!complexColoring) {
 			colorRange = manager.heatMapRange;
 			for (CyNode node: nodeList) {
-				NodeType type = manager.getNodeType(network, node);
+				NodeType type = ModelUtils.getNodeType(network, node);
 				switch (type) {
 				case MUTATION:
 					{
-						List<CyNode> genes = manager.getGeneNodes(network, node);
+						List<CyNode> genes = ModelUtils.getGeneNodes(network, node);
 						genes.add(node);
 						nodesToSelect.addAll(genes);
-						residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
+						residues.addAll(StructureUtils.getResidues(manager, network, Collections.singletonList(node)));
 					}
 					break;
 				case MULTIMUTATION:
 					{
-						List<CyNode> genes = manager.getGeneNodes(network, node);
-						manager.selectNodes(network, genes);
-						List<CyNode> residueNodes = manager.getResidueNodes(network, node, true);
+						List<CyNode> genes = ModelUtils.getGeneNodes(network, node);
+						ModelUtils.selectNodes(network, genes);
+						List<CyNode> residueNodes = StructureUtils.getResidueNodes(manager, network, node, true);
 						nodesToSelect.addAll(residueNodes);
-						residues.addAll(manager.getResidues(network, residueNodes));
+						residues.addAll(StructureUtils.getResidues(manager, network, residueNodes));
 					}
 					break;
 				case GENE:
 					{
 						// Handle this carefully.  We want to get the color to map onto
 						// the residues
-						Map<Color, Set<String>> resCol = manager.getResiduesAndColors(view, node);
+						Map<Color, Set<String>> resCol = StructureUtils.getResiduesAndColors(manager, view, node);
 						for (Color color: resCol.keySet()) {
 							if (colorMap.containsKey(color)) {
 								colorMap.get(color).addAll(resCol.get(color));
@@ -107,7 +108,7 @@ public class SelectTask extends AbstractTask {
 				case STRUCTURE:
 					{
 						nodesToSelect.add(node);
-						residues.addAll(manager.getResidues(network, Collections.singletonList(node)));
+						residues.addAll(StructureUtils.getResidues(manager, network, Collections.singletonList(node)));
 					}
 					break;
 				}
@@ -121,11 +122,11 @@ public class SelectTask extends AbstractTask {
 
 		manager.showSpheres(residues);
 		if (colorMap.size() > 0) {
-			manager.resolveDuplicates(colorMap);
-			Map<Color, Set<String>> newMap = manager.compressMap(colorMap, colorRange);
+			ColorUtils.resolveDuplicates(colorMap);
+			Map<Color, Set<String>> newMap = ColorUtils.compressMap(colorMap, colorRange);
 			manager.colorSpheres(newMap);
 		}
 
-		manager.selectNodes(network, nodesToSelect);
+		ModelUtils.selectNodes(network, nodesToSelect);
 	}
 }

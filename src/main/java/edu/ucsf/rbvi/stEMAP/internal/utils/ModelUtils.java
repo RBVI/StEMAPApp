@@ -1,8 +1,12 @@
 package edu.ucsf.rbvi.stEMAP.internal.utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.cytoscape.model.CyColumn;
@@ -203,4 +207,112 @@ public class ModelUtils {
 	public static String getName(CyNetwork network, CyIdentifiable cyId) {
 		return network.getRow(cyId).get(CyNetwork.NAME, String.class);
 	}
+
+	/*
+	 * Build a map from node Name to the underlying node
+	 */
+	public static Map<String, CyNode> nodeMap(CyNetwork network) {
+		Map<String, CyNode> nodeMap = new HashMap<>();
+		for (CyNode node: network.getNodeList()) {
+			String name = getName(network, node);
+			if (node != null)
+				nodeMap.put(name, node);
+		}
+		return nodeMap;
+	}
+
+ 	public static void selectNodes(CyNetwork net, List<CyNode> nodes) {
+ 		for (CyNode node: nodes) {
+ 			net.getRow(node).set(CyNetwork.SELECTED, true);
+ 		}
+ 	}
+
+	public static void orderResidues(final CyNetwork network, List<CyNode> mutations) {
+		List<String> nodeOrder = network.getRow(network).getList("__nodeOrder", String.class);
+		Collections.sort(mutations, new ClusterSort(network, nodeOrder));
+	}
+
+	public static void orderGenes(CyNetwork network, List<CyNode> genes) {
+		// Get the order
+		List<String> attrOrder = network.getRow(network).getList("__arrayOrder", String.class);
+		Collections.sort(genes, new ClusterSort(network, attrOrder));
+	}
+
+	public static NodeType getNodeType(CyNetwork network, CyNode node) {
+		String mutType = network.getRow(node).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
+		String pdb = network.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
+		if (mutType == null || mutType.length() == 0) {
+			if (pdb == null || pdb.length() == 0)
+				return NodeType.GENE;
+			return NodeType.STRUCTURE;
+		}
+
+		if (mutType.equals("single"))
+			return NodeType.MUTATION;
+		return NodeType.MULTIMUTATION;
+	}
+
+	public static List<CyNode> getGeneNodes(CyNetwork net, CyNode node) {
+		List<CyNode> geneNodes = new ArrayList<>();
+
+		for (CyNode neighbor: net.getNeighborList(node, CyEdge.Type.ANY)) {
+			String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
+			if (mutType == null || mutType.length() == 0) {
+				String pdb = net.getRow(neighbor).get(ModelUtils.PDB_COLUMN, String.class);
+				if (pdb == null || pdb.length() == 0) {
+					geneNodes.add(neighbor);
+				}
+			}
+		}
+		return geneNodes;
+	}
+
+	public static List<CyEdge> getConnectingResidueEdges(CyNetwork net, CyNode node) {
+		List<CyEdge> edges = new ArrayList<>();
+		for (CyEdge edge: net.getAdjacentEdgeList(node, CyEdge.Type.ANY)) {
+			CyNode neighbor = edge.getSource();
+			if (edge.getSource().equals(node)) {
+				neighbor = edge.getTarget();
+			}
+			String pdb = net.getRow(neighbor).get(ModelUtils.RESIDUE_COLUMN, String.class);
+			if (pdb != null && pdb.length() > 0) {
+				edges.add(edge);
+			} else {
+				String mutType = net.getRow(neighbor).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
+				if (mutType != null && (mutType.equals("del") || mutType.equals("multiple"))) {
+					edges.add(edge);
+				}
+			}
+		}
+		return edges;
+	}
+
+	private static class ClusterSort implements Comparator<CyNode> {
+		final Map<String, Integer> orderMap;
+		final CyNetwork network;
+		public ClusterSort(final CyNetwork network, List<String> order) {
+			orderMap = new HashMap<>();
+			this.network = network;
+			for (int i = 0; i < order.size(); i++) {
+				orderMap.put(order.get(i), i);
+			}
+		}
+
+		public int compare(CyNode a, CyNode b) {
+			String nameA = ModelUtils.getName(network, a);
+			String nameB = ModelUtils.getName(network, b);
+			if (!orderMap.containsKey(nameA)) {
+				System.out.println("Can't find entry for "+nameA);
+				return -1;
+			}
+			if (!orderMap.containsKey(nameB)) {
+				System.out.println("Can't find entry for "+nameB);
+				return 1;
+			}
+			Integer orderA = orderMap.get(nameA);
+			Integer orderB = orderMap.get(nameB);
+			return orderA.compareTo(orderB);
+		}
+	}
+
 }
