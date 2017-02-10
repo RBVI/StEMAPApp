@@ -3,6 +3,7 @@ package edu.ucsf.rbvi.stEMAP.internal.view;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.MouseEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
@@ -41,6 +42,7 @@ import org.cytoscape.model.CyEdge;
 import org.cytoscape.model.CyNetwork;
 import org.cytoscape.model.CyNode;
 import org.cytoscape.model.CyTableUtil;
+import org.cytoscape.util.swing.IconManager;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.HeatMapData;
@@ -53,22 +55,50 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	JScrollPane scroller;
 	JLabel imageLabel;
 	HeatMap heatMap;
+	Font iconFont;
 
 	public ResultsPanel(StEMAPManager manager) {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
+		IconManager iconManager = manager.getService(IconManager.class);
+		iconFont = iconManager.getIconFont(15.0f);
+
 		setLayout(new BorderLayout());
 		scroller = initialize();
 		if (scroller != null)
 			add(scroller, BorderLayout.CENTER);
+
+
+		JPanel settings = new JPanel();
+		settings.setLayout(new BoxLayout(settings, BoxLayout.Y_AXIS));
+
 		// Add Utilities checkboxes
 		JPanel buttonBox = createButtonBox();
 		createAutoAnnotateCheckbox(buttonBox);
 		createIgnoreMultipleCheckbox(buttonBox);
 		createComplexCheckbox(buttonBox);
-		createColorScale(buttonBox);
-		buttonBox.add(Box.createRigidArea(new Dimension(0,10)));
-		add(buttonBox, BorderLayout.SOUTH);
+		CollapsablePanel options = new CollapsablePanel(iconFont, "Options", buttonBox, true);
+		options.setBorder(BorderFactory.createEtchedBorder());
+		settings.add(options);
+
+		// Add color scale
+		JPanel slider = createColorScale();
+		CollapsablePanel colorScale = new CollapsablePanel(iconFont, "Color intensity", slider, true);
+		colorScale.setBorder(BorderFactory.createEtchedBorder());
+		settings.add(colorScale);
+
+		// Add mutant filter 
+		JPanel filterSlider = createFilterScale();
+		CollapsablePanel filterScale = new CollapsablePanel(iconFont, 
+		                                                    "Filter by number of interactions", 
+		                                                    filterSlider, true);
+		filterScale.setBorder(BorderFactory.createEtchedBorder());
+		settings.add(filterScale);
+
+		add(settings, BorderLayout.SOUTH);
+
+		// buttonBox.add(Box.createRigidArea(new Dimension(0,10)));
+		// add(buttonBox, BorderLayout.SOUTH);
 	}
 
 	public void update() {
@@ -128,7 +158,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 
 	private JPanel createButtonBox() {
 		JPanel buttonBox = new JPanel();
-		buttonBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+		// return buttonBox;
+		// buttonBox.setAlignmentX(Component.LEFT_ALIGNMENT);
 		buttonBox.setLayout(new BoxLayout(buttonBox, BoxLayout.PAGE_AXIS));
 		return buttonBox;
 	}
@@ -140,6 +171,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		autoAnnotateCB.setActionCommand("autoAnnotate");
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(autoAnnotateCB);
+		buttonBox.add(Box.createHorizontalGlue());
 	}
 
 	private void createIgnoreMultipleCheckbox(JPanel buttonBox) {
@@ -149,6 +181,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		ignoreMultiplesCB.setActionCommand("ignoreMultiples");
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(ignoreMultiplesCB);
+		buttonBox.add(Box.createHorizontalGlue());
 	}
 
 	private void createComplexCheckbox(JPanel buttonBox) {
@@ -158,14 +191,15 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		complexCB.setActionCommand("useComplexColoring");
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(complexCB);
+		buttonBox.add(Box.createHorizontalGlue());
 	}
 
-	private void createColorScale(JPanel buttonBox) {
-		JLabel scaleLabel = new JLabel("Color intensity:");
-		scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
-		buttonBox.add(scaleLabel);
+	private JPanel createColorScale() {
+		// JLabel scaleLabel = new JLabel("Color intensity:");
+		// scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
+		// buttonBox.add(scaleLabel);
 		JSlider scaleSlider = new JSlider(0, 500, 100);
-		scaleSlider.addChangeListener(this);
+		scaleSlider.addChangeListener(new ColorSliderChanged());
 		Dictionary<Integer, JLabel> labelTable = new Hashtable<>();
 		labelTable.put(0, sliderLabel("0"));
 		labelTable.put(100, sliderLabel("1"));
@@ -177,7 +211,28 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		scaleSlider.setPaintLabels(true);
 		JPanel sliderPanel = new JPanel();
 		sliderPanel.add(scaleSlider);
-		buttonBox.add(sliderPanel);
+		return sliderPanel;
+		// buttonBox.add(sliderPanel);
+	}
+	
+	private JPanel createFilterScale() {
+		// JLabel scaleLabel = new JLabel("Color intensity:");
+		// scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
+		// buttonBox.add(scaleLabel);
+		JSlider scaleSlider = new JSlider(0, 20, 0);
+		Dictionary<Integer, JLabel> labelTable = new Hashtable<>();
+		labelTable.put(0, sliderLabel("0"));
+		labelTable.put(5, sliderLabel("5"));
+		labelTable.put(10, sliderLabel("10"));
+		labelTable.put(15, sliderLabel("15"));
+		labelTable.put(20, sliderLabel("20"));
+		scaleSlider.setLabelTable(labelTable);
+		scaleSlider.addChangeListener(new FilterSliderChanged());
+		scaleSlider.setPaintLabels(true);
+		JPanel sliderPanel = new JPanel();
+		sliderPanel.add(scaleSlider);
+		return sliderPanel;
+		// buttonBox.add(sliderPanel);
 	}
 
 	private JLabel sliderLabel(String label) {
@@ -208,6 +263,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		Object s = e.getSource();
 		if (s instanceof JSlider) {
 			JSlider slider = (JSlider)s;
+			if (slider.getValueIsAdjusting())
+				return;
 			// Scale to 0-5
 			double sValue = (((double)slider.getValue())/100.0);
 			manager.setScale(sValue);
@@ -273,6 +330,39 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	
 			panel.invalidate();
 			panel.repaint();
+		}
+	}
+
+	class ColorSliderChanged implements ChangeListener {
+		@Override
+		public void stateChanged(ChangeEvent e) {
+			Object s = e.getSource();
+			if (s instanceof JSlider) {
+				JSlider slider = (JSlider)s;
+				if (slider.getValueIsAdjusting())
+					return;
+				// Scale to 0-5
+				double sValue = (((double)slider.getValue())/100.0);
+				manager.setScale(sValue);
+			}
+	
+			heatMap.updatePlot();
+			manager.updateSpheres();
+		}
+	}
+	
+	class FilterSliderChanged implements ChangeListener {
+		@Override
+		public void stateChanged(ChangeEvent e) {
+			Object s = e.getSource();
+			if (s instanceof JSlider) {
+				JSlider slider = (JSlider)s;
+				if (slider.getValueIsAdjusting())
+					return;
+			}
+
+			heatMap.updatePlot();
+			manager.updateSpheres();
 		}
 	}
 
