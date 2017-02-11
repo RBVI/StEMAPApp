@@ -78,9 +78,9 @@ public class StEMAPManager implements TaskObserver {
 	String lastResidues = null;
 	ResultsPanel currentResultsPanel = null;
 
-	boolean autoAnnotate = false;
+	boolean autoAnnotate = true;
 	boolean ignoreMultiples = false;
-	boolean useComplexColoring = false;
+	boolean useComplexColoring = true;
 	double minWeight = 0.0;
 	double maxWeight = 0.0;
 	double scale = 1.0;

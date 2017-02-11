@@ -40,7 +40,7 @@ public class CollapsablePanel extends JPanel {
 		boolean expanded = false;
 
 		public HeaderPanel(Font iconFont, String text, boolean collapsed) {
-			font = new Font("sans-serif", Font.BOLD, 12);
+			font = new Font("sans-serif", Font.PLAIN, 12);
 
 			this.setLayout(new GridBagLayout());
 			this.expanded = !collapsed;
@@ -53,6 +53,8 @@ public class CollapsablePanel extends JPanel {
 				expandButton = new JButton(DOWN_ARROW);
 			expandButton.addActionListener(this);
 			expandButton.setBorderPainted(false);
+			expandButton.setBorder(BorderFactory.createEmptyBorder(0,5,0,5));
+			expandButton.setMargin(new Insets(0,5,0,5));
 			expandButton.setContentAreaFilled(false);
 			expandButton.setOpaque(false);
 			expandButton.setFocusPainted(false);
@@ -89,7 +91,8 @@ public class CollapsablePanel extends JPanel {
 
 		setBackground(new Color(200, 200, 220));
 		contentPanel_ = panel;
-		panel.setBorder(BorderFactory.createEtchedBorder());
+		panel.setBorder(BorderFactory.createEmptyBorder(0,0,0,0));
+		// panel.setBorder(BorderFactory.createEtchedBorder());
 
 		add(headerPanel_);
 		add(contentPanel_);

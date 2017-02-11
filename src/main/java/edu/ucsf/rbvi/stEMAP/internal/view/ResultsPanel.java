@@ -56,6 +56,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	JLabel imageLabel;
 	HeatMap heatMap;
 	Font iconFont;
+	int filterCutoff = 0;
 
 	public ResultsPanel(StEMAPManager manager) {
 		this.manager = manager;
@@ -90,7 +91,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		// Add mutant filter 
 		JPanel filterSlider = createFilterScale();
 		CollapsablePanel filterScale = new CollapsablePanel(iconFont, 
-		                                                    "Filter by number of interactions", 
+		                                                    "Minimum number of interactions", 
 		                                                    filterSlider, true);
 		filterScale.setBorder(BorderFactory.createEtchedBorder());
 		settings.add(filterScale);
@@ -110,7 +111,17 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		}
 	}
 
-
+	public void updateChart() {
+		if (scroller != null) {
+			remove(scroller);
+			revalidate();
+		}
+		scroller = initialize();
+		if (scroller != null) {
+			add(scroller, BorderLayout.CENTER);
+			revalidate();
+		}
+	}
 
 	private JScrollPane initialize() {
 		if (network == null)
@@ -129,7 +140,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		HeatMapData data;
 		try {
 			data	= new HeatMapData(manager, new HashSet<CyNode>(manager.getSelectedGenes()),	
-		                                   new HashSet<CyNode>(manager.getSelectedMutations()));
+		                                   new HashSet<CyNode>(manager.getSelectedMutations()),
+																			 filterCutoff);
 		} catch (IllegalArgumentException e) {
 			JLabel label = new JLabel(e.getMessage());
 			JScrollPane scroller = new JScrollPane(label);
@@ -165,7 +177,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	}
 
 	private void createAutoAnnotateCheckbox(JPanel buttonBox) {
-		JCheckBox autoAnnotateCB = new JCheckBox("Auto-annotate structure");
+		JCheckBox autoAnnotateCB = 
+			new JCheckBox("Auto-annotate structure", manager.autoAnnotate());
 		autoAnnotateCB.setToolTipText("Automatically show genetic interactions of selected genes on structure");
 		autoAnnotateCB.addItemListener(this);
 		autoAnnotateCB.setActionCommand("autoAnnotate");
@@ -175,7 +188,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	}
 
 	private void createIgnoreMultipleCheckbox(JPanel buttonBox) {
-		JCheckBox ignoreMultiplesCB = new JCheckBox("Ignore multiple mutations");
+		JCheckBox ignoreMultiplesCB = 
+			new JCheckBox("Ignore multiple mutations", manager.ignoreMultiples());
 		ignoreMultiplesCB.setToolTipText("Don't show interactions that involved multiple mutations");
 		ignoreMultiplesCB.addItemListener(this);
 		ignoreMultiplesCB.setActionCommand("ignoreMultiples");
@@ -185,7 +199,8 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	}
 
 	private void createComplexCheckbox(JPanel buttonBox) {
-		JCheckBox complexCB = new JCheckBox("Use complex coloring");
+		JCheckBox complexCB = 
+			new JCheckBox("Use complex coloring", manager.useComplexColoring());
 		complexCB.setToolTipText("When multiple genes are selected, assume they are in a complex");
 		complexCB.addItemListener(this);
 		complexCB.setActionCommand("useComplexColoring");
@@ -219,14 +234,19 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		// JLabel scaleLabel = new JLabel("Color intensity:");
 		// scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
 		// buttonBox.add(scaleLabel);
-		JSlider scaleSlider = new JSlider(0, 20, 0);
+		JSlider scaleSlider = new JSlider(0, 10, 0);
 		Dictionary<Integer, JLabel> labelTable = new Hashtable<>();
 		labelTable.put(0, sliderLabel("0"));
-		labelTable.put(5, sliderLabel("5"));
+		labelTable.put(2, sliderLabel("2"));
+		labelTable.put(4, sliderLabel("4"));
+		labelTable.put(6, sliderLabel("6"));
+		labelTable.put(8, sliderLabel("8"));
 		labelTable.put(10, sliderLabel("10"));
-		labelTable.put(15, sliderLabel("15"));
-		labelTable.put(20, sliderLabel("20"));
 		scaleSlider.setLabelTable(labelTable);
+		scaleSlider.setSnapToTicks(true);
+		scaleSlider.setPaintTicks(true);
+		scaleSlider.setMajorTickSpacing(2);
+		scaleSlider.setMinorTickSpacing(1);
 		scaleSlider.addChangeListener(new FilterSliderChanged());
 		scaleSlider.setPaintLabels(true);
 		JPanel sliderPanel = new JPanel();
@@ -344,10 +364,10 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 				// Scale to 0-5
 				double sValue = (((double)slider.getValue())/100.0);
 				manager.setScale(sValue);
+
+				heatMap.updatePlot();
+				manager.updateSpheres();
 			}
-	
-			heatMap.updatePlot();
-			manager.updateSpheres();
 		}
 	}
 	
@@ -359,10 +379,11 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 				JSlider slider = (JSlider)s;
 				if (slider.getValueIsAdjusting())
 					return;
-			}
+				filterCutoff = slider.getValue();
 
-			heatMap.updatePlot();
-			manager.updateSpheres();
+				updateChart();
+				manager.updateSpheres();
+			}
 		}
 	}
 

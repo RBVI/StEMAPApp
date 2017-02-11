@@ -37,11 +37,15 @@ public class HeatMapData {
 	String[] rowHeaders = null;
 	String[] columnHeaders = null;
 	Map<String, CyNode> nameMap = null;
+	int minimumColumns = 0;
 
-	public HeatMapData(StEMAPManager manager, Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
+	public HeatMapData(StEMAPManager manager, 
+	                   Set<CyNode> selectedGenes, Set<CyNode> selectedMutations,
+										 int minimumColumns) {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
 		this.networkView = manager.getMergedNetworkView();
+		this.minimumColumns = minimumColumns;
 
 		nameMap = new HashMap<String, CyNode>();
 		init(selectedGenes, selectedMutations);
@@ -86,6 +90,25 @@ public class HeatMapData {
 		// as in the cluster
 		ModelUtils.orderResidues(network, mutations);
 		ModelUtils.orderGenes(network, genes);
+
+		// If we're supposed to filter by the number of genes/mutation, we need to do that here
+		if (minimumColumns > 0) {
+			List<CyNode> filteredMutations = new ArrayList<>();
+			for (int row = 0; row < mutations.size(); row++) {
+				int mutationCount = 0;
+				CyNode rowNode = mutations.get(row);
+				for (int column = 0; column < genes.size(); column++) {
+					CyNode columnNode = genes.get(column);
+					List<CyEdge> edges = network.getConnectingEdgeList(columnNode, rowNode, CyEdge.Type.ANY);
+					if (edges.size() > 0) {
+						mutationCount++;
+					}
+				}
+				if (mutationCount > minimumColumns)
+					filteredMutations.add(rowNode);
+			}
+			mutations = filteredMutations;
+		}
 
 		// Build matrix
 		data = new DefaultXYZDataset();
