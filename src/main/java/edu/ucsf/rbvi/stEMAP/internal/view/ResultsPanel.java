@@ -51,7 +51,9 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	StEMAPManager manager;
 	final CyNetwork network;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
-	JPanel resultsPanel;
+	JSlider filterSlider;
+	JPanel filterSliderPanel;
+ 	JPanel resultsPanel;
 	JScrollPane scroller;
 	JLabel imageLabel;
 	HeatMap heatMap;
@@ -89,10 +91,10 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		settings.add(colorScale);
 
 		// Add mutant filter 
-		JPanel filterSlider = createFilterScale();
+		filterSliderPanel = createFilterScale(manager.getSelectedGenes().size());
 		CollapsablePanel filterScale = new CollapsablePanel(iconFont, 
 		                                                    "Minimum number of interactions", 
-		                                                    filterSlider, true);
+		                                                    filterSliderPanel, true);
 		filterScale.setBorder(BorderFactory.createEtchedBorder());
 		settings.add(filterScale);
 
@@ -109,6 +111,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		} else {
 			SwingUtilities.invokeLater(scrollUpdater);
 		}
+		updateFilterScale(manager.getSelectedGenes().size());
 	}
 
 	public void updateChart() {
@@ -230,29 +233,83 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		// buttonBox.add(sliderPanel);
 	}
 	
-	private JPanel createFilterScale() {
+	private JPanel createFilterScale(int size) {
+		int max = getFilterMax(size);
+		int majorTick = getFilterMajor(max);
+		int minorTick = getFilterMinor(max, majorTick);
+		Dictionary<Integer, JLabel> labelTable = createFilterLabels(max, majorTick);
 		// JLabel scaleLabel = new JLabel("Color intensity:");
 		// scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
 		// buttonBox.add(scaleLabel);
-		JSlider scaleSlider = new JSlider(0, 10, 0);
-		Dictionary<Integer, JLabel> labelTable = new Hashtable<>();
-		labelTable.put(0, sliderLabel("0"));
-		labelTable.put(2, sliderLabel("2"));
-		labelTable.put(4, sliderLabel("4"));
-		labelTable.put(6, sliderLabel("6"));
-		labelTable.put(8, sliderLabel("8"));
-		labelTable.put(10, sliderLabel("10"));
-		scaleSlider.setLabelTable(labelTable);
-		scaleSlider.setSnapToTicks(true);
-		scaleSlider.setPaintTicks(true);
-		scaleSlider.setMajorTickSpacing(2);
-		scaleSlider.setMinorTickSpacing(1);
-		scaleSlider.addChangeListener(new FilterSliderChanged());
-		scaleSlider.setPaintLabels(true);
+		filterSlider = new JSlider(0, max, 0);
+		filterSlider.setLabelTable(labelTable);
+		filterSlider.setSnapToTicks(true);
+		filterSlider.setPaintTicks(true);
+		filterSlider.setMajorTickSpacing(majorTick);
+		if (minorTick > 0)
+			filterSlider.setMinorTickSpacing(minorTick);
+		filterSlider.addChangeListener(new FilterSliderChanged());
+		filterSlider.setPaintLabels(true);
 		JPanel sliderPanel = new JPanel();
-		sliderPanel.add(scaleSlider);
+		sliderPanel.add(filterSlider);
 		return sliderPanel;
 		// buttonBox.add(sliderPanel);
+	}
+
+	private void updateFilterScale(int size) {
+		int max = getFilterMax(size);
+		int majorTick = getFilterMajor(max);
+		int minorTick = getFilterMinor(max, majorTick);
+		Dictionary<Integer, JLabel> labelTable = createFilterLabels(max, majorTick);
+		filterSlider.setMaximum(max);
+		filterSlider.setLabelTable(labelTable);
+		filterSlider.setMajorTickSpacing(majorTick);
+		if (minorTick > 0)
+			filterSlider.setMinorTickSpacing(minorTick);
+		filterSlider.revalidate();
+		filterSlider.repaint();
+		filterSliderPanel.revalidate();
+		filterSliderPanel.repaint();
+	}
+
+	private int getFilterMax(int size) {
+		if (size == 0) return 0;
+		if (size <= 5) return 5;
+		if (size <= 25) {
+			if (size%5 == 0) return size;
+			return (size/5+1)*5;
+		}
+		if (size <= 100) {
+			if (size%10 == 0) return size;
+			return (size/10+1)*10;
+		}
+
+		if (size%50 == 0) return size;
+		return (size/50+1)*50;
+	}
+
+	private int getFilterMajor(int max) {
+		if (max == 0) return 0;
+		if (max <= 5) return 1;
+		if (max <= 25) return 5;
+		if (max <= 100) return 10;
+		return 50;
+	}
+
+	private int getFilterMinor(int max, int major) {
+		if (major < 5) return 0;
+		if (major < 10) return 1;
+		if (major == 10) return 5;
+		return 25;
+	}
+
+	private Dictionary<Integer, JLabel> createFilterLabels(int max, int majorTicks) {
+		Dictionary<Integer, JLabel> labelTable = new Hashtable<>();
+		if (max == 0) return labelTable;
+		for (int i = 0; i <= max; i = i+majorTicks) {
+			labelTable.put(i, sliderLabel(Integer.toString(i)));
+		}
+		return labelTable;
 	}
 
 	private JLabel sliderLabel(String label) {
