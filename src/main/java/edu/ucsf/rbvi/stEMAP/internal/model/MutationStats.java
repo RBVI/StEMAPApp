@@ -123,6 +123,7 @@ public class MutationStats {
 
 	public static Map<Color, Set<String>> getComplexResiduesAndColors(StEMAPManager manager, 
 	                                                                  CyNetworkView view, List<CyNode> complex, 
+																																		List<CyNode> filteredMutations,
 	                                                                  double scale) {
 		CyNetwork net = view.getModel();
 		// System.out.println("Getting significant edges");
@@ -136,6 +137,10 @@ public class MutationStats {
 		for (CyEdge edge: edges) {
 			// Get the residue
 			CyNode resNode = edge.getSource();
+
+			if (filteredMutations != null && !filteredMutations.contains(resNode))
+				continue;
+
 			List<String> resSet = StructureUtils.getResidue(manager, net, resNode);
 
 			// Add the value

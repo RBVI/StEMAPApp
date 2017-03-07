@@ -29,7 +29,7 @@ import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 public class StructureUtils {
 
 	public static Map<Color, Set<String>> getResiduesAndColors(StEMAPManager mgr, CyNetworkView netView, 
-	                                                           CyNode node) {
+	                                                           CyNode node, List<CyNode> filteredMutations) {
 		Map<Color, Set<String>> colorMap = new HashMap<>();
 
 		CyNetwork net = netView.getModel();
@@ -39,6 +39,9 @@ public class StructureUtils {
 			if (edge.getSource().equals(node)) {
 				resNode = edge.getTarget();
 			}
+			if (filteredMutations != null && !filteredMutations.contains(resNode))
+				continue;
+
 			String residues = net.getRow(resNode).get(ModelUtils.RESIDUE_COLUMN, String.class);
 			if (residues != null && residues.length() > 0) {
 				List<String> resSet = StructureUtils.getResidue(mgr, net, resNode);

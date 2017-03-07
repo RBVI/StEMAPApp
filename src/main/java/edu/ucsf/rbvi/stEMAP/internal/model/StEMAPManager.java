@@ -217,7 +217,7 @@ public class StEMAPManager implements TaskObserver {
 		}
 
 		if (autoAnnotate && genesChanged) {
-			updateChimera(true);
+			updateChimera(true, null);
 		}
 	}
 
@@ -426,10 +426,14 @@ public class StEMAPManager implements TaskObserver {
 		return spec;
 	}
 
+	public void updateSpheres(List<CyNode> mutations) {
+		if (lastResidues != null)
+			updateChimera(false, mutations);
+	}
+
 	// Called form ResultsPanel to update color of spheres
 	public void updateSpheres() {
-		if (lastResidues != null)
-			updateChimera(false);
+		updateSpheres(null);
 	}
 
 	public void chimeraCommand(String command) {
@@ -559,7 +563,7 @@ public class StEMAPManager implements TaskObserver {
 		}
 	}
 
-	private void updateChimera(boolean show) {
+	private void updateChimera(boolean show, List<CyNode> filteredMutations) {
 		Map<Color, Set<String>> cm = new HashMap<>();
 		List<String> residues = new ArrayList<>();
 		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
@@ -583,7 +587,7 @@ public class StEMAPManager implements TaskObserver {
 		if (!complexColoring) {
 			colorRange = heatMapRange;
 			for (CyNode node: selectedGenes) {
-				resCol = StructureUtils.getResiduesAndColors(this, mergedNetworkView, node);
+				resCol = StructureUtils.getResiduesAndColors(this, mergedNetworkView, node, filteredMutations);
 
 				for (Color color: resCol.keySet()) {
 					if (cm.containsKey(color)) {
@@ -598,7 +602,8 @@ public class StEMAPManager implements TaskObserver {
 			colorRange = mixedMapRange;
 			// System.out.println("Using complex coloring");
 			resCol = MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, 
-							                                           new ArrayList<CyNode>(selectedGenes), scale);
+							                                           new ArrayList<CyNode>(selectedGenes), 
+																												 filteredMutations, scale);
 			// System.out.println("resCol has "+resCol.size()+" colors");
 			for (Color color: resCol.keySet()) {
 				if (cm.containsKey(color)) {

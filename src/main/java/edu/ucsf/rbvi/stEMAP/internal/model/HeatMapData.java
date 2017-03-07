@@ -37,37 +37,31 @@ public class HeatMapData {
 	String[] rowHeaders = null;
 	String[] columnHeaders = null;
 	Map<String, CyNode> nameMap = null;
-	int minimumColumns = 0;
 
 	public HeatMapData(StEMAPManager manager, 
-	                   Set<CyNode> selectedGenes, Set<CyNode> selectedMutations,
-										 int minimumColumns) {
+	                   List<CyNode> selectedGenes, List<CyNode> selectedMutations) {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
 		this.networkView = manager.getMergedNetworkView();
-		this.minimumColumns = minimumColumns;
 
 		nameMap = new HashMap<String, CyNode>();
 		init(selectedGenes, selectedMutations);
 	}
 
-	private void init(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
-		this.genes = new ArrayList<CyNode>(selectedGenes);
-		this.mutations = new ArrayList<CyNode>(selectedMutations);
-
+	private void init(List<CyNode> genes, List<CyNode> mutations) {
 		// If we already have both genes and mutations, we probably
 		// don't want to add connections
-		if (selectedGenes.size() == 0 || selectedMutations.size() == 0) {
+		if (genes.size() == 0 || mutations.size() == 0) {
 			// Add connections
 			// For each selected Gene, add the connected mutations
-			for (CyNode node: selectedGenes) {
+			for (CyNode node: genes) {
 				for (CyNode resNode: StructureUtils.getResidueNodes(manager, network, node, false)) {
 					if (!mutations.contains(resNode))
 						mutations.add(resNode);
 				}
 			}
 			// For each mutation, add the connected Genes
-			for (CyNode node: selectedMutations) {
+			for (CyNode node: mutations) {
 				for (CyNode gNode: ModelUtils.getGeneNodes(network, node)) {
 					if (!genes.contains(gNode))
 						genes.add(gNode);
@@ -90,25 +84,6 @@ public class HeatMapData {
 		// as in the cluster
 		ModelUtils.orderResidues(network, mutations);
 		ModelUtils.orderGenes(network, genes);
-
-		// If we're supposed to filter by the number of genes/mutation, we need to do that here
-		if (minimumColumns > 0) {
-			List<CyNode> filteredMutations = new ArrayList<>();
-			for (int row = 0; row < mutations.size(); row++) {
-				int mutationCount = 0;
-				CyNode rowNode = mutations.get(row);
-				for (int column = 0; column < genes.size(); column++) {
-					CyNode columnNode = genes.get(column);
-					List<CyEdge> edges = network.getConnectingEdgeList(columnNode, rowNode, CyEdge.Type.ANY);
-					if (edges.size() > 0) {
-						mutationCount++;
-					}
-				}
-				if (mutationCount > minimumColumns)
-					filteredMutations.add(rowNode);
-			}
-			mutations = filteredMutations;
-		}
 
 		// Build matrix
 		data = new DefaultXYZDataset();
@@ -167,7 +142,7 @@ public class HeatMapData {
 		return Double.NaN;
 	}
 
-	public void update(Set<CyNode> selectedGenes, Set<CyNode> selectedMutations) {
+	public void update(List<CyNode> selectedGenes, List<CyNode> selectedMutations) {
 		init (selectedGenes, selectedMutations);
 	}
 

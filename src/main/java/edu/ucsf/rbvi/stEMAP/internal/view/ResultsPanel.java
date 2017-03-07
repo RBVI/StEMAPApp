@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -46,6 +47,8 @@ import org.cytoscape.util.swing.IconManager;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
 import edu.ucsf.rbvi.stEMAP.internal.model.HeatMapData;
+import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
+import edu.ucsf.rbvi.stEMAP.internal.utils.StructureUtils;
 
 public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemListener, ChangeListener {
 	StEMAPManager manager;
@@ -59,6 +62,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	HeatMap heatMap;
 	Font iconFont;
 	int filterCutoff = 0;
+	List<CyNode> filteredMutations = null;
 
 	public ResultsPanel(StEMAPManager manager) {
 		this.manager = manager;
@@ -133,18 +137,15 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		if (manager.getSelectedGenes().size() == 0 && 
 		    manager.getSelectedMutations().size() == 0) 
 			return null;
+
+		List<CyNode> mutations = new ArrayList<CyNode>();
+		List<CyNode> genes = new ArrayList<CyNode>();
+		addConnections(mutations, genes);
+		filteredMutations = filterMutations(filterCutoff, mutations, genes);
 	
-		// Get the currently selected nodes
-		// List<CyNode> selectedNodes = CyTableUtil.getNodesInState(network, CyNetwork.SELECTED, true);
-		// for (CyNode node: selectedNodes) {
-		// 	manager.selectGeneOrMutation(node, Boolean.TRUE);
-		// }
-		
 		HeatMapData data;
 		try {
-			data	= new HeatMapData(manager, new HashSet<CyNode>(manager.getSelectedGenes()),	
-		                                   new HashSet<CyNode>(manager.getSelectedMutations()),
-																			 filterCutoff);
+			data	= new HeatMapData(manager, genes, filteredMutations);
 		} catch (IllegalArgumentException e) {
 			JLabel label = new JLabel(e.getMessage());
 			JScrollPane scroller = new JScrollPane(label);
@@ -318,6 +319,57 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		return lbl;
 	}
 
+	private void addConnections(List<CyNode> mutations, List<CyNode> genes) {
+		Set<CyNode> selectedMutations = manager.getSelectedMutations();
+		Set<CyNode> selectedGenes = manager.getSelectedGenes();
+		genes.addAll(selectedGenes);
+		mutations.addAll(selectedMutations);
+		System.out.println("addConnections("+mutations.size()+", "+genes.size()+")");
+		if (selectedGenes.size() == 0 || selectedMutations.size() == 0) {
+			// Add connections
+			// For each selected Gene, add the connected mutations
+			for (CyNode node: selectedGenes) {
+				for (CyNode resNode: StructureUtils.getResidueNodes(manager, network, node, false)) {
+					if (!mutations.contains(resNode))
+						mutations.add(resNode);
+				}
+			}
+			// For each mutation, add the connected Genes
+			for (CyNode node: selectedMutations) {
+				for (CyNode gNode: ModelUtils.getGeneNodes(network, node)) {
+					if (!genes.contains(gNode))
+						genes.add(gNode);
+				}
+
+				// genes.addAll(manager.getGeneNodes(network, node));
+			}
+		}
+	}
+
+	private List<CyNode> filterMutations(int minimumColumns, List<CyNode> mutations, List<CyNode> genes) {
+		System.out.println("filterMutations("+minimumColumns+","+mutations.size()+","+genes.size()+")");
+		if (minimumColumns > 0) {
+			List<CyNode> filteredMutations = new ArrayList<>();
+			for (int row = 0; row < mutations.size(); row++) {
+				int mutationCount = 0;
+				CyNode rowNode = mutations.get(row);
+				for (int column = 0; column < genes.size(); column++) {
+					CyNode columnNode = genes.get(column);
+					List<CyEdge> edges = network.getConnectingEdgeList(columnNode, rowNode, CyEdge.Type.ANY);
+					if (edges.size() > 0) {
+						mutationCount++;
+					}
+				}
+				if (mutationCount > minimumColumns)
+					filteredMutations.add(rowNode);
+			}
+			System.out.println("Returning "+filteredMutations.size()+" mutations");
+			return filteredMutations;
+		}
+		System.out.println("Returning "+mutations.size()+" mutations");
+		return mutations;
+	}
+
 	@Override
 	public Component getComponent() {
 		return this;
@@ -439,7 +491,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 				filterCutoff = slider.getValue();
 
 				updateChart();
-				manager.updateSpheres();
+				manager.updateSpheres(filteredMutations);
 			}
 		}
 	}

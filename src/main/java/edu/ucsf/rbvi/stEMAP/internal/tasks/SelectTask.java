@@ -94,7 +94,7 @@ public class SelectTask extends AbstractTask {
 					{
 						// Handle this carefully.  We want to get the color to map onto
 						// the residues
-						Map<Color, Set<String>> resCol = StructureUtils.getResiduesAndColors(manager, view, node);
+						Map<Color, Set<String>> resCol = StructureUtils.getResiduesAndColors(manager, view, node, null);
 						for (Color color: resCol.keySet()) {
 							if (colorMap.containsKey(color)) {
 								colorMap.get(color).addAll(resCol.get(color));
@@ -116,7 +116,7 @@ public class SelectTask extends AbstractTask {
 		} else {
 			colorRange = manager.mixedMapRange;
 			Map<Color, Set<String>> resCol = 
-							MutationStats.getComplexResiduesAndColors(manager, view, nodeList, manager.getScale());
+							MutationStats.getComplexResiduesAndColors(manager, view, nodeList, null, manager.getScale());
 		}
 
 
