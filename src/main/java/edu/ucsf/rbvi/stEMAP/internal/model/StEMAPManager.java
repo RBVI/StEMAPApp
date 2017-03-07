@@ -213,10 +213,12 @@ public class StEMAPManager implements TaskObserver {
 		}
 
 		if (currentResultsPanel != null) {
+			// System.out.println("Updating the results panel");
 			currentResultsPanel.update();
 		}
 
 		if (autoAnnotate && genesChanged) {
+			// System.out.println("Updating Chimera");
 			updateChimera(true, null);
 		}
 	}
@@ -299,16 +301,6 @@ public class StEMAPManager implements TaskObserver {
 		chimeraCommand(command);
 	}
 
-	/*
-	public String colorResidue(String residue, Color color) {
-		double r = (double)color.getRed()/(double)255;
-		double g = (double)color.getGreen()/(double)255;
-		double b = (double)color.getBlue()/(double)255;
-		String command = "color "+r+","+g+","+b+",a #"+modelNumber+":"+residue;
-		// System.out.println("Command: "+command);
-		return command;
-	}
-	*/
 	public String colorResidues(Color color, Set<String> residues) {
 		// Residue is the Cytoscape-style string of the form "nnn.a,nnn.b,...".  We need to convert
 		// it to a ChimeraX list
@@ -328,17 +320,6 @@ public class StEMAPManager implements TaskObserver {
 			chimeraCommand("hide "+lastResidues);
 		}
 	
-		/*
-		// Make it a comma separated list
-		String command = null;
-		for (String r: residues) {
-			if (command == null)
-				command = r;
-			else
-				command += ","+r;
-		}
-		*/
-
 		if (residues == null || residues.size() == 0) {
 			lastResidues = null;
 			return;
@@ -428,12 +409,13 @@ public class StEMAPManager implements TaskObserver {
 
 	public void updateSpheres(List<CyNode> mutations) {
 		if (lastResidues != null)
-			updateChimera(false, mutations);
+			updateChimera(true, mutations);
 	}
 
 	// Called form ResultsPanel to update color of spheres
 	public void updateSpheres() {
-		updateSpheres(null);
+		if (lastResidues != null)
+			updateChimera(false, null);
 	}
 
 	public void chimeraCommand(String command) {
@@ -498,8 +480,10 @@ public class StEMAPManager implements TaskObserver {
 
 	public void setMinMax(double min, double max) { 
 		minWeight = min; maxWeight = max; 
-		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), ModelUtils.MIN_WEIGHT_COLUMN, Double.class);
-		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), ModelUtils.MAX_WEIGHT_COLUMN, Double.class);
+		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), 
+		                        ModelUtils.MIN_WEIGHT_COLUMN, Double.class);
+		ModelUtils.createColumn(mergedNetwork.getDefaultNetworkTable(), 
+		                        ModelUtils.MAX_WEIGHT_COLUMN, Double.class);
 		mergedNetwork.getRow(mergedNetwork).set(ModelUtils.MIN_WEIGHT_COLUMN, min);
 		mergedNetwork.getRow(mergedNetwork).set(ModelUtils.MAX_WEIGHT_COLUMN, max);
 	}
@@ -520,7 +504,8 @@ public class StEMAPManager implements TaskObserver {
 
 	public ColorScale getMColorScale() {
 		if (mColor == null) {
-			mColor = new ColorScale(0.0, (maxWeight+Math.abs(minWeight))/2.0, ZERO_COLOR, ZERO_COLOR, MIXED_COLOR, ZERO_COLOR);
+			mColor = new ColorScale(0.0, (maxWeight+Math.abs(minWeight))/2.0, 
+			                        ZERO_COLOR, ZERO_COLOR, MIXED_COLOR, ZERO_COLOR);
 		}
 		return mColor;
 	}

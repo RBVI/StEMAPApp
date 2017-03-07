@@ -50,7 +50,8 @@ import edu.ucsf.rbvi.stEMAP.internal.model.HeatMapData;
 import edu.ucsf.rbvi.stEMAP.internal.utils.ModelUtils;
 import edu.ucsf.rbvi.stEMAP.internal.utils.StructureUtils;
 
-public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemListener, ChangeListener {
+public class ResultsPanel extends JPanel 
+                          implements CytoPanelComponent2, ItemListener, ChangeListener {
 	StEMAPManager manager;
 	final CyNetwork network;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
@@ -103,9 +104,6 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		settings.add(filterScale);
 
 		add(settings, BorderLayout.SOUTH);
-
-		// buttonBox.add(Box.createRigidArea(new Dimension(0,10)));
-		// add(buttonBox, BorderLayout.SOUTH);
 	}
 
 	public void update() {
@@ -120,11 +118,13 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 
 	public void updateChart() {
 		if (scroller != null) {
+			// System.out.println("Removing scroller");
 			remove(scroller);
 			revalidate();
 		}
 		scroller = initialize();
 		if (scroller != null) {
+			// System.out.println("Adding scroller");
 			add(scroller, BorderLayout.CENTER);
 			revalidate();
 		}
@@ -168,14 +168,12 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		chartPanel.setPreferredSize(new Dimension(width, height));
 		chartPanel.setSize(new Dimension(width, height));
 		chartPanel.addChartMouseListener(new HeatMapToolTipListener(chartPanel, data));
-		JScrollPane scroller = new JScrollPane(chartPanel);
-		return scroller;
+		JScrollPane scrollPane = new JScrollPane(chartPanel);
+		return scrollPane;
 	}
 
 	private JPanel createButtonBox() {
 		JPanel buttonBox = new JPanel();
-		// return buttonBox;
-		// buttonBox.setAlignmentX(Component.LEFT_ALIGNMENT);
 		buttonBox.setLayout(new BoxLayout(buttonBox, BoxLayout.PAGE_AXIS));
 		return buttonBox;
 	}
@@ -267,31 +265,33 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		filterSlider.setMajorTickSpacing(majorTick);
 		if (minorTick > 0)
 			filterSlider.setMinorTickSpacing(minorTick);
-		filterSlider.revalidate();
-		filterSlider.repaint();
+		// filterSlider.revalidate();
+		// filterSlider.repaint();
 		filterSliderPanel.revalidate();
-		filterSliderPanel.repaint();
+		// filterSliderPanel.repaint();
 	}
 
 	private int getFilterMax(int size) {
 		if (size == 0) return 0;
-		if (size <= 5) return 5;
+		size = size - 1;
+		if (size <= 10) return size;
 		if (size <= 25) {
 			if (size%5 == 0) return size;
-			return (size/5+1)*5;
+			return (size/5)*5;
 		}
 		if (size <= 100) {
 			if (size%10 == 0) return size;
-			return (size/10+1)*10;
+			return (size/10)*10;
 		}
 
 		if (size%50 == 0) return size;
-		return (size/50+1)*50;
+		return (size/50)*50;
 	}
 
 	private int getFilterMajor(int max) {
 		if (max == 0) return 0;
 		if (max <= 5) return 1;
+		if (max <= 10) return 2;
 		if (max <= 25) return 5;
 		if (max <= 100) return 10;
 		return 50;
@@ -324,7 +324,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 		Set<CyNode> selectedGenes = manager.getSelectedGenes();
 		genes.addAll(selectedGenes);
 		mutations.addAll(selectedMutations);
-		System.out.println("addConnections("+mutations.size()+", "+genes.size()+")");
+		// System.out.println("addConnections("+mutations.size()+", "+genes.size()+")");
 		if (selectedGenes.size() == 0 || selectedMutations.size() == 0) {
 			// Add connections
 			// For each selected Gene, add the connected mutations
@@ -347,7 +347,7 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 	}
 
 	private List<CyNode> filterMutations(int minimumColumns, List<CyNode> mutations, List<CyNode> genes) {
-		System.out.println("filterMutations("+minimumColumns+","+mutations.size()+","+genes.size()+")");
+		// System.out.println("filterMutations("+minimumColumns+","+mutations.size()+","+genes.size()+")");
 		if (minimumColumns > 0) {
 			List<CyNode> filteredMutations = new ArrayList<>();
 			for (int row = 0; row < mutations.size(); row++) {
@@ -363,10 +363,10 @@ public class ResultsPanel extends JPanel implements CytoPanelComponent2, ItemLis
 				if (mutationCount > minimumColumns)
 					filteredMutations.add(rowNode);
 			}
-			System.out.println("Returning "+filteredMutations.size()+" mutations");
+			// System.out.println("Returning "+filteredMutations.size()+" mutations");
 			return filteredMutations;
 		}
-		System.out.println("Returning "+mutations.size()+" mutations");
+		// System.out.println("Returning "+mutations.size()+" mutations");
 		return mutations;
 	}
 
