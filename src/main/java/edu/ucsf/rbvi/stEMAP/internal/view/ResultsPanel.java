@@ -261,9 +261,13 @@ public class ResultsPanel extends JPanel
 		filterSlider.setMaximum(max);
 		filterSlider.setLabelTable(labelTable);
 		filterSlider.setMajorTickSpacing(majorTick);
+		if (max > 0)
+			filterSlider.setPaintLabels(true);
+		else
+			filterSlider.setPaintLabels(false);
 		if (minorTick > 0)
 			filterSlider.setMinorTickSpacing(minorTick);
-		// filterSlider.revalidate();
+		filterSlider.revalidate();
 		// filterSlider.repaint();
 		filterSliderPanel.revalidate();
 		// filterSliderPanel.repaint();
