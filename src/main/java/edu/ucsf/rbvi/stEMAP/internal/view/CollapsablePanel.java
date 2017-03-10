@@ -25,14 +25,12 @@ import javax.swing.JPanel;
 
 import org.cytoscape.util.swing.IconManager;
 
+@SuppressWarnings("serial")
 public class CollapsablePanel extends JPanel {
-	private static String RIGHT_ARROW = "\uF0DA";
-	private static String DOWN_ARROW = "\uF0D7";
-	Font awesomeFont;
-
 	JPanel contentPanel_;
 	HeaderPanel headerPanel_;
 
+	@SuppressWarnings("serial")
 	private class HeaderPanel extends JPanel implements ActionListener {
 		Font font;
 		JButton expandButton;
@@ -48,9 +46,9 @@ public class CollapsablePanel extends JPanel {
 			EasyGBC c = new EasyGBC();
 
 			if (collapsed)
-				expandButton = new JButton(RIGHT_ARROW);
+				expandButton = new JButton(IconManager.ICON_CARET_RIGHT);
 			else
-				expandButton = new JButton(DOWN_ARROW);
+				expandButton = new JButton(IconManager.ICON_CARET_DOWN);
 			expandButton.addActionListener(this);
 			expandButton.setBorderPainted(false);
 			expandButton.setBorder(BorderFactory.createEmptyBorder(0,5,0,5));
@@ -113,11 +111,11 @@ public class CollapsablePanel extends JPanel {
 
 	public void toggleSelection() {
 		if (contentPanel_.isShowing()) {
-			headerPanel_.setButton(RIGHT_ARROW);
+			headerPanel_.setButton(IconManager.ICON_CARET_RIGHT);
 			contentPanel_.setVisible(false);
 		} else {
 			contentPanel_.setVisible(true);
-			headerPanel_.setButton(DOWN_ARROW);
+			headerPanel_.setButton(IconManager.ICON_CARET_DOWN);
 		}
 
 		validate();

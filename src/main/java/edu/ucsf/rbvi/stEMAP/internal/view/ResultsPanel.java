@@ -237,9 +237,6 @@ public class ResultsPanel extends JPanel
 		int majorTick = getFilterMajor(max);
 		int minorTick = getFilterMinor(max, majorTick);
 		Dictionary<Integer, JLabel> labelTable = createFilterLabels(max, majorTick);
-		// JLabel scaleLabel = new JLabel("Color intensity:");
-		// scaleLabel.setBorder(BorderFactory.createEmptyBorder(10,0,0,0));
-		// buttonBox.add(scaleLabel);
 		filterSlider = new JSlider(0, max, 0);
 		filterSlider.setLabelTable(labelTable);
 		filterSlider.setSnapToTicks(true);
@@ -248,7 +245,8 @@ public class ResultsPanel extends JPanel
 		if (minorTick > 0)
 			filterSlider.setMinorTickSpacing(minorTick);
 		filterSlider.addChangeListener(new FilterSliderChanged());
-		filterSlider.setPaintLabels(true);
+		if (max > 0)
+			filterSlider.setPaintLabels(true);
 		JPanel sliderPanel = new JPanel();
 		sliderPanel.add(filterSlider);
 		return sliderPanel;
