@@ -229,13 +229,15 @@ public class ModelUtils {
 
 	public static void orderResidues(final CyNetwork network, List<CyNode> mutations) {
 		List<String> nodeOrder = network.getRow(network).getList("__nodeOrder", String.class);
-		Collections.sort(mutations, new ClusterSort(network, nodeOrder));
+		if (nodeOrder != null && nodeOrder.size() > 0)
+			Collections.sort(mutations, new ClusterSort(network, nodeOrder));
 	}
 
 	public static void orderGenes(CyNetwork network, List<CyNode> genes) {
 		// Get the order
 		List<String> attrOrder = network.getRow(network).getList("__arrayOrder", String.class);
-		Collections.sort(genes, new ClusterSort(network, attrOrder));
+		if (attrOrder != null && attrOrder.size() > 0)
+			Collections.sort(genes, new ClusterSort(network, attrOrder));
 	}
 
 	public static NodeType getNodeType(CyNetwork network, CyNode node) {

@@ -81,6 +81,7 @@ public class StEMAPManager implements TaskObserver {
 	boolean autoAnnotate = true;
 	boolean ignoreMultiples = false;
 	boolean useComplexColoring = true;
+	boolean selectEdges = true;
 	double minWeight = 0.0;
 	double maxWeight = 0.0;
 	double scale = 1.0;
@@ -467,6 +468,11 @@ public class StEMAPManager implements TaskObserver {
 	public boolean useComplexColoring() { return useComplexColoring; }
 	public void setUseComplexColoring(boolean complexColoring) { 
 		this.useComplexColoring = complexColoring; 
+	}
+
+	public boolean selectEdges() { return selectEdges; }
+	public void setSelectEdges(boolean selectEdges) { 
+		this.selectEdges = selectEdges; 
 	}
 
 	public double getScale() { return scale; }

@@ -85,6 +85,7 @@ public class ResultsPanel extends JPanel
 		createAutoAnnotateCheckbox(buttonBox);
 		createIgnoreMultipleCheckbox(buttonBox);
 		createComplexCheckbox(buttonBox);
+		createSelectEdgesCheckbox(buttonBox);
 		CollapsablePanel options = new CollapsablePanel(iconFont, "Options", buttonBox, true);
 		options.setBorder(BorderFactory.createEtchedBorder());
 		settings.add(options);
@@ -142,6 +143,22 @@ public class ResultsPanel extends JPanel
 		List<CyNode> genes = new ArrayList<CyNode>();
 		addConnections(mutations, genes);
 		filteredMutations = filterMutations(filterCutoff, mutations, genes);
+
+		if (manager.selectEdges()) {
+			// Clear the existing edge selection
+			for (CyEdge edge: CyTableUtil.getEdgesInState(network, CyNetwork.SELECTED, true))
+				network.getRow(edge).set(CyNetwork.SELECTED, Boolean.FALSE);
+
+			// Select the edges connecting the genes and the mutations
+			for (CyNode gene: genes) {
+				List<CyEdge> geneEdges = network.getAdjacentEdgeList(gene, CyEdge.Type.ANY);
+				for (CyEdge edge: geneEdges) {
+					if (filteredMutations.contains(edge.getSource()))
+						network.getRow(edge).set(CyNetwork.SELECTED, Boolean.TRUE);
+				}
+			}
+
+		}
 	
 		HeatMapData data;
 		try {
@@ -208,6 +225,17 @@ public class ResultsPanel extends JPanel
 		complexCB.setActionCommand("useComplexColoring");
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(complexCB);
+		buttonBox.add(Box.createHorizontalGlue());
+	}
+
+	private void createSelectEdgesCheckbox(JPanel buttonBox) {
+		JCheckBox selectEdgesCB = 
+			new JCheckBox("Select edges", manager.selectEdges());
+		selectEdgesCB.setToolTipText("Automatically select edges between genes and mutations");
+		selectEdgesCB.addItemListener(this);
+		selectEdgesCB.setActionCommand("selectEdges");
+		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
+		buttonBox.add(selectEdgesCB);
 		buttonBox.add(Box.createHorizontalGlue());
 	}
 
@@ -416,6 +444,8 @@ public class ResultsPanel extends JPanel
 			manager.setIgnoreMultiples(selected);
 		} else if (command.equals("useComplexColoring")) {
 			manager.setUseComplexColoring(selected);
+		} else if (command.equals("selectEdges")) {
+			manager.setSelectEdges(selected);
 		}
 	}
 

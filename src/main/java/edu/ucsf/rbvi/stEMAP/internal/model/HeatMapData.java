@@ -45,7 +45,8 @@ public class HeatMapData {
 		this.networkView = manager.getMergedNetworkView();
 
 		nameMap = new HashMap<String, CyNode>();
-		init(selectedGenes, selectedMutations);
+		if (selectedGenes != null && selectedMutations != null)
+			init(selectedGenes, selectedMutations);
 	}
 
 	private void init(List<CyNode> genes, List<CyNode> mutations) {
