@@ -26,6 +26,7 @@ public class SelectionListener implements RowsSetListener {
 
 	public void handleEvent(RowsSetEvent e) {
 		CyNetwork mergedNetwork = manager.getMergedNetwork();
+		if (mergedNetwork == null) return;
 
 		if (!e.containsColumn(CyNetwork.SELECTED))
 			return;
