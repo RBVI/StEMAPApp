@@ -27,6 +27,9 @@ import org.cytoscape.util.swing.IconManager;
 
 @SuppressWarnings("serial")
 public class CollapsablePanel extends JPanel {
+	private static String RIGHT_ARROW = "\uF0DA";
+  private static String DOWN_ARROW = "\uF0D7";
+
 	JPanel contentPanel_;
 	HeaderPanel headerPanel_;
 
@@ -46,13 +49,13 @@ public class CollapsablePanel extends JPanel {
 			EasyGBC c = new EasyGBC();
 
 			if (collapsed)
-				expandButton = new JButton(IconManager.ICON_CARET_RIGHT);
+				expandButton = new JButton(RIGHT_ARROW);
 			else
-				expandButton = new JButton(IconManager.ICON_CARET_DOWN);
+				expandButton = new JButton(DOWN_ARROW);
 			expandButton.addActionListener(this);
 			expandButton.setBorderPainted(false);
 			expandButton.setBorder(BorderFactory.createEmptyBorder(0,5,0,5));
-			expandButton.setMargin(new Insets(0,5,0,5));
+			// expandButton.setMargin(new Insets(0,5,0,5));
 			expandButton.setContentAreaFilled(false);
 			expandButton.setOpaque(false);
 			expandButton.setFocusPainted(false);
@@ -111,11 +114,11 @@ public class CollapsablePanel extends JPanel {
 
 	public void toggleSelection() {
 		if (contentPanel_.isShowing()) {
-			headerPanel_.setButton(IconManager.ICON_CARET_RIGHT);
+			headerPanel_.setButton(RIGHT_ARROW);
 			contentPanel_.setVisible(false);
 		} else {
 			contentPanel_.setVisible(true);
-			headerPanel_.setButton(IconManager.ICON_CARET_DOWN);
+			headerPanel_.setButton(DOWN_ARROW);
 		}
 
 		validate();

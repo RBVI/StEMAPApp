@@ -1,11 +1,14 @@
 package edu.ucsf.rbvi.stEMAP.internal.model;
 
+import java.awt.Color;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,6 +29,15 @@ public class StructureMap {
 	Map<String, Object> rinParameters = null;
 	double positiveCutoff = 1.0;
 	double negativeCutoff = -2.0;
+	public Color MAX_COLOR = Color.RED;
+	public Color MIN_COLOR = Color.BLUE;
+	public Color MIXED_COLOR = Color.MAGENTA;
+	public Color ZERO_COLOR = Color.WHITE;
+	public Color MISSING_COLOR = Color.GRAY;
+
+	public Color[] residueMapRange = {ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR};
+	public Color[] mixedMapRange = {ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR, ZERO_COLOR, MIXED_COLOR};
+
 
 	public StructureMap(File stFile) throws IOException, FileNotFoundException {
 		pdbId = null;
@@ -93,6 +105,24 @@ public class StructureMap {
 				}
 			}
 
+			if (jsonObject.containsKey("ResidueGradient")) {
+				JSONObject residueGradient = (JSONObject)jsonObject.get("ResidueGradient");
+				if (residueGradient.containsKey("MinColor"))
+					MIN_COLOR = getColor(residueGradient.get("MinColor").toString());
+				if (residueGradient.containsKey("MaxColor"))
+					MAX_COLOR = getColor(residueGradient.get("MaxColor").toString());
+				if (residueGradient.containsKey("MixedColor"))
+					MIXED_COLOR = getColor(residueGradient.get("MixedColor").toString());
+				if (residueGradient.containsKey("MissingColor"))
+					MISSING_COLOR = getColor(residueGradient.get("MissingColor").toString());
+				if (residueGradient.containsKey("ZeroColor"))
+					ZERO_COLOR = getColor(residueGradient.get("ZeroColor").toString());
+
+				// Reset the maps
+				residueMapRange = new Color[]{ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR};
+				mixedMapRange = new Color[]{ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR, ZERO_COLOR, MIXED_COLOR};
+			}
+
     }
     catch (ParseException pe) {
       throw new RuntimeException("Unable to parse "+stFile+": "+pe);
@@ -108,10 +138,33 @@ public class StructureMap {
 		return chainMap.get(key); 
 	}
 	public List<String> getDuplicateChains(String key) { 
-		return duplicateChainMap.get(key); 
+		return new ArrayList<>(duplicateChainMap.get(key)); 
 	}
 	public double getPositiveCutoff() { return positiveCutoff; }
 	public double getNegativeCutoff() { return negativeCutoff; }
 	public Map<String, Object> getRINParameters() { return rinParameters; }
+	public Color[] getResidueColorMap() { return residueMapRange; }
+	public Color[] getMixedColorMap() { return mixedMapRange; }
+
+	private Color getColor(String value) {
+    if (value == null) {
+      return Color.black;
+    }
+    try {
+      // get color by hex or octal value
+      return Color.decode(value);
+    } catch (NumberFormatException nfe) {
+      // if we can't decode lets try to get it by name
+      try {
+        // try to get a color by name using reflection
+        final Field f = Color.class.getField(value);
+
+        return (Color) f.get(null);
+      } catch (Exception ce) {
+        // if we can't get any color return black
+        return Color.black;
+      }
+    }
+	}
 
 }

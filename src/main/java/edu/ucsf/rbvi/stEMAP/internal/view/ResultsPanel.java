@@ -27,6 +27,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
+import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -55,6 +56,8 @@ public class ResultsPanel extends JPanel
 	StEMAPManager manager;
 	final CyNetwork network;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
+	JCheckBox medianValuesCB;
+	JCheckBox complexCB;
 	JSlider filterSlider;
 	JPanel filterSliderPanel;
  	JPanel resultsPanel;
@@ -62,14 +65,17 @@ public class ResultsPanel extends JPanel
 	JLabel imageLabel;
 	HeatMap heatMap;
 	Font iconFont;
+	Font smallFont;
 	int filterCutoff = 0;
+	boolean dontUpdate = false;
 	List<CyNode> filteredMutations = null;
 
 	public ResultsPanel(StEMAPManager manager) {
 		this.manager = manager;
 		this.network = manager.getMergedNetwork();
 		IconManager iconManager = manager.getService(IconManager.class);
-		iconFont = iconManager.getIconFont(15.0f);
+		iconFont = iconManager.getIconFont(17.0f);
+		smallFont = new Font("sans-serif", Font.PLAIN, 10);
 
 		setLayout(new BorderLayout());
 		scroller = initialize();
@@ -85,6 +91,7 @@ public class ResultsPanel extends JPanel
 		createAutoAnnotateCheckbox(buttonBox);
 		createIgnoreMultipleCheckbox(buttonBox);
 		createComplexCheckbox(buttonBox);
+		createMedianValuesCheckbox(buttonBox);
 		createSelectEdgesCheckbox(buttonBox);
 		CollapsablePanel options = new CollapsablePanel(iconFont, "Options", buttonBox, true);
 		options.setBorder(BorderFactory.createEtchedBorder());
@@ -201,6 +208,7 @@ public class ResultsPanel extends JPanel
 		autoAnnotateCB.setToolTipText("Automatically show genetic interactions of selected genes on structure");
 		autoAnnotateCB.addItemListener(this);
 		autoAnnotateCB.setActionCommand("autoAnnotate");
+		autoAnnotateCB.setFont(smallFont);
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(autoAnnotateCB);
 		buttonBox.add(Box.createHorizontalGlue());
@@ -212,19 +220,33 @@ public class ResultsPanel extends JPanel
 		ignoreMultiplesCB.setToolTipText("Don't show interactions that involved multiple mutations");
 		ignoreMultiplesCB.addItemListener(this);
 		ignoreMultiplesCB.setActionCommand("ignoreMultiples");
+		ignoreMultiplesCB.setFont(smallFont);
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(ignoreMultiplesCB);
 		buttonBox.add(Box.createHorizontalGlue());
 	}
 
 	private void createComplexCheckbox(JPanel buttonBox) {
-		JCheckBox complexCB = 
+		complexCB = 
 			new JCheckBox("Use complex coloring", manager.useComplexColoring());
 		complexCB.setToolTipText("When multiple genes are selected, assume they are in a complex");
 		complexCB.addItemListener(this);
 		complexCB.setActionCommand("useComplexColoring");
+		complexCB.setFont(smallFont);
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(complexCB);
+		buttonBox.add(Box.createHorizontalGlue());
+	}
+
+	private void createMedianValuesCheckbox(JPanel buttonBox) {
+		medianValuesCB = 
+			new JCheckBox("Use median complex coloring", manager.medianValues());
+		medianValuesCB.setToolTipText("Use the median for all edges for a residue in a complex");
+		medianValuesCB.addItemListener(this);
+		medianValuesCB.setActionCommand("medianValues");
+		medianValuesCB.setFont(smallFont);
+		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
+		buttonBox.add(medianValuesCB);
 		buttonBox.add(Box.createHorizontalGlue());
 	}
 
@@ -234,6 +256,7 @@ public class ResultsPanel extends JPanel
 		selectEdgesCB.setToolTipText("Automatically select edges between genes and mutations");
 		selectEdgesCB.addItemListener(this);
 		selectEdgesCB.setActionCommand("selectEdges");
+		selectEdgesCB.setFont(smallFont);
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
 		buttonBox.add(selectEdgesCB);
 		buttonBox.add(Box.createHorizontalGlue());
@@ -262,6 +285,7 @@ public class ResultsPanel extends JPanel
 	
 	private JPanel createFilterScale(int size) {
 		int max = getFilterMax(size);
+		System.out.println("max = "+max);
 		int majorTick = getFilterMajor(max);
 		int minorTick = getFilterMinor(max, majorTick);
 		Dictionary<Integer, JLabel> labelTable = createFilterLabels(max, majorTick);
@@ -286,6 +310,9 @@ public class ResultsPanel extends JPanel
 		int majorTick = getFilterMajor(max);
 		int minorTick = getFilterMinor(max, majorTick);
 		Dictionary<Integer, JLabel> labelTable = createFilterLabels(max, majorTick);
+
+		// Don't trigger a repaint of everything yet
+		dontUpdate = true;
 		filterSlider.setMaximum(max);
 		filterSlider.setLabelTable(labelTable);
 		filterSlider.setMajorTickSpacing(majorTick);
@@ -299,6 +326,7 @@ public class ResultsPanel extends JPanel
 		// filterSlider.repaint();
 		filterSliderPanel.revalidate();
 		// filterSliderPanel.repaint();
+		dontUpdate = false;
 	}
 
 	private int getFilterMax(int size) {
@@ -345,7 +373,7 @@ public class ResultsPanel extends JPanel
 
 	private JLabel sliderLabel(String label) {
 		JLabel lbl = new JLabel(label);
-		lbl.setFont(lbl.getFont().deriveFont(8.0f));
+		lbl.setFont(smallFont);
 		return lbl;
 	}
 
@@ -419,6 +447,7 @@ public class ResultsPanel extends JPanel
 
 	@Override
 	public void stateChanged(ChangeEvent e) {
+		if (dontUpdate) return;
 		Object s = e.getSource();
 		if (s instanceof JSlider) {
 			JSlider slider = (JSlider)s;
@@ -435,7 +464,7 @@ public class ResultsPanel extends JPanel
 
 	@Override
 	public void itemStateChanged(ItemEvent e) {
-		JCheckBox cb = (JCheckBox)e.getItemSelectable();
+		JToggleButton cb = (JToggleButton)e.getItemSelectable();
 		String command = cb.getActionCommand();
 		boolean selected = cb.isSelected();
 		if (command.equals("autoAnnotate")) {
@@ -444,8 +473,18 @@ public class ResultsPanel extends JPanel
 			manager.setIgnoreMultiples(selected);
 		} else if (command.equals("useComplexColoring")) {
 			manager.setUseComplexColoring(selected);
+			if (selected && manager.medianValues()) {
+				manager.setMedianValues(false);
+				medianValuesCB.setSelected(false);
+			}
 		} else if (command.equals("selectEdges")) {
 			manager.setSelectEdges(selected);
+		} else if (command.equals("medianValues")) {
+			manager.setMedianValues(selected);
+			if (selected && manager.useComplexColoring()) {
+				manager.setUseComplexColoring(false);
+				complexCB.setSelected(false);
+			}
 		}
 	}
 

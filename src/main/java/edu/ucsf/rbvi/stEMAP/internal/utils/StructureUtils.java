@@ -25,8 +25,65 @@ import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 import org.cytoscape.work.TaskMonitor;
 
 import edu.ucsf.rbvi.stEMAP.internal.model.StEMAPManager;
+import edu.ucsf.rbvi.stEMAP.internal.view.ColorScale;
 
 public class StructureUtils {
+
+	public static Map<Color, Set<String>> getComplexResiduesAndColors(StEMAPManager manager, 
+	                                                                  CyNetworkView view, List<CyNode> complex, 
+	                                                                  double scale) {
+		Map<Color, Set<String>> colorMap = new HashMap<>();
+		CyNetwork net = view.getModel();
+		Map<String, List<Double>> weightMap = new HashMap<>();
+		Color[] residueColorMap = manager.getResidueColorMap();
+		ColorScale cscale = new ColorScale(manager.getPositiveCutoff(), manager.getMaxWeight(), 
+		                                   residueColorMap[0], residueColorMap[0], residueColorMap[3], residueColorMap[0]);
+
+		for (CyNode node: complex) {
+			for (CyEdge edge: net.getAdjacentEdgeList(node, CyEdge.Type.ANY)) {
+				Double weight = net.getRow(edge).get(ModelUtils.WEIGHT_COLUMN, Double.class);
+				CyNode resNode = edge.getSource();
+				if (edge.getSource().equals(node)) {
+					resNode = edge.getTarget();
+				}
+
+				// Skip over multiples
+				if (manager.ignoreMultiples()) {
+					String mutType = net.getRow(resNode).get(ModelUtils.MUT_TYPE_COLUMN, String.class);
+					if (mutType != null && (mutType.equals("del") || mutType.equals("multiple")))
+						continue;
+				}
+
+				List<String> residues = getResidue(manager, net, resNode);
+				for (String residue: residues) {
+					if (!weightMap.containsKey(residue)) {
+						weightMap.put(residue, new ArrayList<>());
+					}
+					weightMap.get(residue).add(weight);
+				}
+			}
+		}
+
+
+		for (String residue: weightMap.keySet()) {
+			List<Double> weights = weightMap.get(residue);
+
+			// Sort the list
+			Collections.sort(weights);
+			Double median = weights.get(weights.size()/2);
+			// System.out.println("Median weight for "+residue+" = "+median);
+			// System.out.println("Min weight = "+manager.getMinWeight());
+			if (median > manager.getPositiveCutoff() /* || median < manager.getNegativeCutoff() */) {
+				// System.out.println("Adding "+residue+" to colormap");
+				Color color = (Color) cscale.getPaint(median*scale);
+				if (!colorMap.containsKey(color))
+					colorMap.put(color, new HashSet<>());
+				colorMap.get(color).add(residue);
+			}
+		}
+		return colorMap;
+	}
+
 
 	public static Map<Color, Set<String>> getResiduesAndColors(StEMAPManager mgr, CyNetworkView netView, 
 	                                                           CyNode node, List<CyNode> filteredMutations) {
@@ -112,10 +169,7 @@ public class StructureUtils {
 		String [] rc = resChain.split("[.]");
 		String chain = rc[1];
 		String residue = rc[0];
-		// System.out.println("Looking for duplicate chain for '"+chain+"'");
 		List<String> chains = manager.getDuplicateChains(chain); // Get the chain aliases
-		// System.out.println("Duplicate chains returns: "+chains);
-		// System.out.println("Got "+chains.size()+" chains: ");
 		if (chains == null) {
 			chains = new ArrayList<String>();
 		}
@@ -123,7 +177,6 @@ public class StructureUtils {
 		for (String ch: chains) {
 			addResidues(manager, residues, ch, residue);
 		}
-		// System.out.println("addChains returning: "+residues);
 		return residues;
 	}
 

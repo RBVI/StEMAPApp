@@ -76,6 +76,7 @@ public class ShowResultsPanel extends AbstractTask {
 			ResultsPanel panel = new ResultsPanel(manager);
 			manager.registerService(panel, CytoPanelComponent.class, new Properties());
 			manager.setResultsPanel(panel);
+			System.out.println("ShowCytoPanel");
 			cytoPanel.setState(CytoPanelState.DOCK);
 			factory.register();
 		}

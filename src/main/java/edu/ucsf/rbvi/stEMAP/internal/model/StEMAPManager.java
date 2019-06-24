@@ -30,6 +30,7 @@ import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 import org.cytoscape.work.SynchronousTaskManager;
 import org.cytoscape.work.FinishStatus;
 import org.cytoscape.work.ObservableTask;
+import org.cytoscape.work.Task;
 import org.cytoscape.work.TaskIterator;
 import org.cytoscape.work.TaskMonitor;
 import org.cytoscape.work.TaskObserver;
@@ -57,8 +58,9 @@ public class StEMAPManager implements TaskObserver {
 	public ColorScale eColor = null;
 	public ColorScale mColor = null;
 
+	// public Color[] residueMapRange = {ZERO_COLOR, Color.BLUE, ZERO_COLOR, Color.RED};
 	public Color[] heatMapRange = {ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR};
-	public Color[] mixedMapRange = {ZERO_COLOR, MIN_COLOR, ZERO_COLOR, MAX_COLOR, ZERO_COLOR, MIXED_COLOR};
+	// public Color[] mixedMapRange = {ZERO_COLOR, Color.BLUE, ZERO_COLOR, Color.RED, ZERO_COLOR, MIXED_COLOR};
 
 	CommandExecutorTaskFactory commandTaskFactory = null;
 	AvailableCommands availableCommands = null;
@@ -82,6 +84,8 @@ public class StEMAPManager implements TaskObserver {
 	boolean ignoreMultiples = false;
 	boolean useComplexColoring = true;
 	boolean selectEdges = true;
+	boolean medianValues = false;
+	boolean medianResidueColoring = false;
 	double minWeight = 0.0;
 	double maxWeight = 0.0;
 	double scale = 1.0;
@@ -141,6 +145,14 @@ public class StEMAPManager implements TaskObserver {
 
 	public double getNegativeCutoff() {
 		return map.getNegativeCutoff();
+	}
+
+	public Color[] getResidueColorMap() {
+		return map.getResidueColorMap();
+	}
+
+	public Color[] getMixedColorMap() {
+		return map.getMixedColorMap();
 	}
 
 	public void setCDTNetwork(CyNetwork network) {
@@ -475,6 +487,16 @@ public class StEMAPManager implements TaskObserver {
 		this.selectEdges = selectEdges; 
 	}
 
+	public boolean medianResidueColoring() { return medianResidueColoring; }
+	public void setMedianResidueColoring(boolean medianResidueColoring) {
+		this.medianResidueColoring = medianResidueColoring;
+	}
+
+	public boolean medianValues() { return medianValues; }
+	public void setMedianValues(boolean medianValues) {
+		this.medianValues = medianValues;
+	}
+
 	public double getScale() { return scale; }
 	public void setScale(double scale) { this.scale = scale; }
 
@@ -536,6 +558,14 @@ public class StEMAPManager implements TaskObserver {
 		serviceRegistrar.unregisterService(service, serviceClass);
 	}
 
+	public void executeTask(Task task) {
+		if (taskManager == null) {
+			taskManager = getService(SynchronousTaskManager.class);
+		}
+		TaskIterator ti = new TaskIterator(task);
+		taskManager.execute(ti);
+	}
+
 	public void allFinished(FinishStatus finishStatus) {
 	}
 
@@ -555,54 +585,56 @@ public class StEMAPManager implements TaskObserver {
 	}
 
 	private void updateChimera(boolean show, List<CyNode> filteredMutations) {
-		Map<Color, Set<String>> cm = new HashMap<>();
+		Map<Color, Set<String>> colorMap = new HashMap<>();
 		List<String> residues = new ArrayList<>();
-		double[] valueRange = { Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MIN_VALUE};
+		List<CyNode> nodesToSelect = new ArrayList<>();
+		Color[] colorRange = null;
 
-		// Check to see if we're using complex coloring.  If we are, we need to do the coloring
-		// in one shot, not node by node
-		boolean complexColoring = false;
-		if (useComplexColoring()) {
-			complexColoring = true;
+		boolean complexColoring = useComplexColoring();
+		boolean medianValues = medianValues();
+		boolean medianResidueValues = medianResidueColoring();
+		if (complexColoring || medianValues || medianResidueValues) {
 			// Make sure we've only selected GENEs
 			for (CyNode node: selectedGenes) {
 				if (ModelUtils.getNodeType(mergedNetwork, node) == NodeType.GENE)
 					continue;
 				complexColoring = false;
+				medianValues = false;
+				medianResidueValues = false;
 				break;
 			}
 		}
 
-		Color[] colorRange = null;
-		Map<Color, Set<String>> resCol;
-		if (!complexColoring) {
-			colorRange = heatMapRange;
+		if (complexColoring) {
+			colorRange = getMixedColorMap();
+			colorMap = 
+							MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, new ArrayList<CyNode>(selectedGenes), null, getScale());
+			for (Color clr: colorMap.keySet()) {
+				residues.addAll(colorMap.get(clr));
+			}
+		} else if (medianValues) {
+			colorRange = getResidueColorMap();
+			colorMap = 
+				StructureUtils.getComplexResiduesAndColors(this, mergedNetworkView, new ArrayList<CyNode>(selectedGenes), getScale());
+			for (Color clr: colorMap.keySet()) {
+				residues.addAll(colorMap.get(clr));
+			}
+		} else if (medianResidueValues) {
+			colorRange = getResidueColorMap();
+		} else {
+			Map<Color, Set<String>> resCol;
+			colorRange = map.getResidueColorMap();
 			for (CyNode node: selectedGenes) {
 				resCol = StructureUtils.getResiduesAndColors(this, mergedNetworkView, node, filteredMutations);
 
 				for (Color color: resCol.keySet()) {
-					if (cm.containsKey(color)) {
-						cm.get(color).addAll(resCol.get(color));
+					if (colorMap.containsKey(color)) {
+						colorMap.get(color).addAll(resCol.get(color));
 					} else {
-						cm.put(color, resCol.get(color));
+						colorMap.put(color, resCol.get(color));
 					}
 					residues.addAll(resCol.get(color));
 				}
-			}
-		} else {
-			colorRange = mixedMapRange;
-			// System.out.println("Using complex coloring");
-			resCol = MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, 
-							                                           new ArrayList<CyNode>(selectedGenes), 
-																												 filteredMutations, scale);
-			// System.out.println("resCol has "+resCol.size()+" colors");
-			for (Color color: resCol.keySet()) {
-				if (cm.containsKey(color)) {
-					cm.get(color).addAll(resCol.get(color));
-				} else {
-					cm.put(color, resCol.get(color));
-				}
-				residues.addAll(resCol.get(color));
 			}
 		}
 
@@ -610,10 +642,10 @@ public class StEMAPManager implements TaskObserver {
 		if (show)
 			showSpheres(residues);
 
-		if (cm != null && cm.size() > 0) {
+		if (colorMap != null && colorMap.size() > 0) {
 			try {
-			ColorUtils.resolveDuplicates(cm);
-			Map<Color, Set<String>> newMap = ColorUtils.compressMap(cm, colorRange);
+			ColorUtils.resolveDuplicates(colorMap);
+			Map<Color, Set<String>> newMap = ColorUtils.compressMap(colorMap, colorRange);
 			colorSpheres(newMap);
 			} catch (Exception e) { e.printStackTrace(); }
 		}

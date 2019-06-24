@@ -49,7 +49,9 @@ public class HeatMapData {
 			init(selectedGenes, selectedMutations);
 	}
 
-	private void init(List<CyNode> genes, List<CyNode> mutations) {
+	private void init(List<CyNode> genesIn, List<CyNode> mutationsIn) {
+		List<CyNode> genes = new ArrayList<>(genesIn);
+		List<CyNode> mutations = new ArrayList<>(mutationsIn);
 		// If we already have both genes and mutations, we probably
 		// don't want to add connections
 		if (genes.size() == 0 || mutations.size() == 0) {
