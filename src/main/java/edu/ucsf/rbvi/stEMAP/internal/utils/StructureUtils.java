@@ -92,10 +92,12 @@ public class StructureUtils {
 			}
 		}
 
+		/*
 		System.out.println("medianMap: ");
 		for (String rOrM: medianMap.keySet()) {
 			System.out.println(rOrM+": "+medianMap.get(rOrM));
 		}
+		*/
 
 		// Now, medianMap contains the median value for each residue or mutation.  Getting the colors
 		// from that map is slightly different.  For residues we're pretty much all set.  For mutations,

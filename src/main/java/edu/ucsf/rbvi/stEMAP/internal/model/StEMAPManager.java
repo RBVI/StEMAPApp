@@ -609,7 +609,6 @@ public class StEMAPManager implements TaskObserver {
 		}
 
 		if (complexColoring) {
-			System.out.println("Complex coloring");
 			colorRange = getMixedColorMap();
 			colorMap = 
 							MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, 
@@ -618,7 +617,6 @@ public class StEMAPManager implements TaskObserver {
 				residues.addAll(colorMap.get(clr));
 			}
 		} else if (medianResidueValues) {
-			System.out.println("Median residue coloring");
 			colorRange = getResidueColorMap();
 			colorMap = 
 				StructureUtils.getComplexResiduesAndColors(this, mergedNetworkView, 
@@ -627,7 +625,6 @@ public class StEMAPManager implements TaskObserver {
 				residues.addAll(colorMap.get(clr));
 			}
 		} else if (medianMutationValues) {
-			System.out.println("Median mutation coloring");
 			colorRange = getResidueColorMap();
 			colorMap = 
 				StructureUtils.getComplexResiduesAndColors(this, mergedNetworkView, 
