@@ -57,16 +57,16 @@ public class SelectTask extends AbstractTask {
 		// Check to see if we're using complex coloring.  If we are, we need to do the coloring
 		// in one shot, not node by node
 		boolean complexColoring = manager.useComplexColoring();
-		boolean medianValues = manager.medianValues();
-		boolean medianResidueValues = manager.medianResidueColoring();
-		if (complexColoring || medianValues) {
+		boolean medianResidueValues = manager.medianResidueValues();
+		boolean medianMutationValues = manager.medianMutationValues();
+		if (complexColoring || medianResidueValues || medianMutationValues) {
 			// Make sure we've only selected GENEs
 			for (CyNode node: nodeList) {
 				if (ModelUtils.getNodeType(network, node) == NodeType.GENE)
 					continue;
 				complexColoring = false;
-				medianValues = false;
 				medianResidueValues = false;
+				medianMutationValues = false;
 				break;
 			}
 		}
@@ -78,10 +78,17 @@ public class SelectTask extends AbstractTask {
 			for (Color clr: colorMap.keySet()) {
 				residues.addAll(colorMap.get(clr));
 			}
-		} else if (medianValues) {
+		} else if (medianResidueValues) {
 			colorRange = manager.getResidueColorMap();
 			colorMap = 
-				StructureUtils.getComplexResiduesAndColors(manager, view, nodeList, manager.getScale());
+				StructureUtils.getComplexResiduesAndColors(manager, view, nodeList, manager.getScale(), true);
+			for (Color clr: colorMap.keySet()) {
+				residues.addAll(colorMap.get(clr));
+			}
+		} else if (medianMutationValues) {
+			colorRange = manager.getResidueColorMap();
+			colorMap = 
+				StructureUtils.getComplexResiduesAndColors(manager, view, nodeList, manager.getScale(), false);
 			for (Color clr: colorMap.keySet()) {
 				residues.addAll(colorMap.get(clr));
 			}

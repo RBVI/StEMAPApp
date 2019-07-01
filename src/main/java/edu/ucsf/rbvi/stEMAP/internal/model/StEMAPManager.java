@@ -82,10 +82,13 @@ public class StEMAPManager implements TaskObserver {
 
 	boolean autoAnnotate = true;
 	boolean ignoreMultiples = false;
-	boolean useComplexColoring = true;
 	boolean selectEdges = true;
-	boolean medianValues = false;
-	boolean medianResidueColoring = false;
+
+	// Options, options, options
+	boolean useComplexColoring = true;
+	boolean medianResidueValues = false;
+	boolean medianMutationValues = false;
+
 	double minWeight = 0.0;
 	double maxWeight = 0.0;
 	double scale = 1.0;
@@ -487,14 +490,14 @@ public class StEMAPManager implements TaskObserver {
 		this.selectEdges = selectEdges; 
 	}
 
-	public boolean medianResidueColoring() { return medianResidueColoring; }
-	public void setMedianResidueColoring(boolean medianResidueColoring) {
-		this.medianResidueColoring = medianResidueColoring;
+	public boolean medianResidueValues() { return medianResidueValues; }
+	public void setMedianResidueValues(boolean medianResidueValues) {
+		this.medianResidueValues = medianResidueValues;
 	}
 
-	public boolean medianValues() { return medianValues; }
-	public void setMedianValues(boolean medianValues) {
-		this.medianValues = medianValues;
+	public boolean medianMutationValues() { return medianMutationValues; }
+	public void setMedianMutationValues(boolean medianMutationValues) {
+		this.medianMutationValues = medianMutationValues;
 	}
 
 	public double getScale() { return scale; }
@@ -591,36 +594,47 @@ public class StEMAPManager implements TaskObserver {
 		Color[] colorRange = null;
 
 		boolean complexColoring = useComplexColoring();
-		boolean medianValues = medianValues();
-		boolean medianResidueValues = medianResidueColoring();
-		if (complexColoring || medianValues || medianResidueValues) {
+		boolean medianResidueValues = medianResidueValues();
+		boolean medianMutationValues = medianMutationValues();
+		if (complexColoring || medianResidueValues || medianMutationValues) {
 			// Make sure we've only selected GENEs
 			for (CyNode node: selectedGenes) {
 				if (ModelUtils.getNodeType(mergedNetwork, node) == NodeType.GENE)
 					continue;
 				complexColoring = false;
-				medianValues = false;
+				medianMutationValues = false;
 				medianResidueValues = false;
 				break;
 			}
 		}
 
 		if (complexColoring) {
+			System.out.println("Complex coloring");
 			colorRange = getMixedColorMap();
 			colorMap = 
-							MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, new ArrayList<CyNode>(selectedGenes), null, getScale());
-			for (Color clr: colorMap.keySet()) {
-				residues.addAll(colorMap.get(clr));
-			}
-		} else if (medianValues) {
-			colorRange = getResidueColorMap();
-			colorMap = 
-				StructureUtils.getComplexResiduesAndColors(this, mergedNetworkView, new ArrayList<CyNode>(selectedGenes), getScale());
+							MutationStats.getComplexResiduesAndColors(this, mergedNetworkView, 
+							                                          new ArrayList<CyNode>(selectedGenes), null, getScale());
 			for (Color clr: colorMap.keySet()) {
 				residues.addAll(colorMap.get(clr));
 			}
 		} else if (medianResidueValues) {
+			System.out.println("Median residue coloring");
 			colorRange = getResidueColorMap();
+			colorMap = 
+				StructureUtils.getComplexResiduesAndColors(this, mergedNetworkView, 
+				                                           new ArrayList<CyNode>(selectedGenes), getScale(), true);
+			for (Color clr: colorMap.keySet()) {
+				residues.addAll(colorMap.get(clr));
+			}
+		} else if (medianMutationValues) {
+			System.out.println("Median mutation coloring");
+			colorRange = getResidueColorMap();
+			colorMap = 
+				StructureUtils.getComplexResiduesAndColors(this, mergedNetworkView, 
+				                                           new ArrayList<CyNode>(selectedGenes), getScale(), false);
+			for (Color clr: colorMap.keySet()) {
+				residues.addAll(colorMap.get(clr));
+			}
 		} else {
 			Map<Color, Set<String>> resCol;
 			colorRange = map.getResidueColorMap();

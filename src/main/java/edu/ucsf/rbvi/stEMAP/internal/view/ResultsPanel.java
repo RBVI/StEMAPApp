@@ -56,7 +56,8 @@ public class ResultsPanel extends JPanel
 	StEMAPManager manager;
 	final CyNetwork network;
 	final Logger logger = Logger.getLogger(CyUserLog.NAME);
-	JCheckBox medianValuesCB;
+	JCheckBox medianResidueValuesCB;
+	JCheckBox medianMutationValuesCB;
 	JCheckBox complexCB;
 	JSlider filterSlider;
 	JPanel filterSliderPanel;
@@ -91,7 +92,8 @@ public class ResultsPanel extends JPanel
 		createAutoAnnotateCheckbox(buttonBox);
 		createIgnoreMultipleCheckbox(buttonBox);
 		createComplexCheckbox(buttonBox);
-		createMedianValuesCheckbox(buttonBox);
+		createMedianResidueValuesCheckbox(buttonBox);
+		createMedianMutationValuesCheckbox(buttonBox);
 		createSelectEdgesCheckbox(buttonBox);
 		CollapsablePanel options = new CollapsablePanel(iconFont, "Options", buttonBox, true);
 		options.setBorder(BorderFactory.createEtchedBorder());
@@ -238,15 +240,27 @@ public class ResultsPanel extends JPanel
 		buttonBox.add(Box.createHorizontalGlue());
 	}
 
-	private void createMedianValuesCheckbox(JPanel buttonBox) {
-		medianValuesCB = 
-			new JCheckBox("Use median complex coloring", manager.medianValues());
-		medianValuesCB.setToolTipText("Use the median for all edges for a residue in a complex");
-		medianValuesCB.addItemListener(this);
-		medianValuesCB.setActionCommand("medianValues");
-		medianValuesCB.setFont(smallFont);
+	private void createMedianResidueValuesCheckbox(JPanel buttonBox) {
+		medianResidueValuesCB = 
+			new JCheckBox("Use median complex coloring (residue)", manager.medianResidueValues());
+		medianResidueValuesCB.setToolTipText("Use the median for all edges for a residue in a complex");
+		medianResidueValuesCB.addItemListener(this);
+		medianResidueValuesCB.setActionCommand("medianResidueValues");
+		medianResidueValuesCB.setFont(smallFont);
 		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
-		buttonBox.add(medianValuesCB);
+		buttonBox.add(medianResidueValuesCB);
+		buttonBox.add(Box.createHorizontalGlue());
+	}
+
+	private void createMedianMutationValuesCheckbox(JPanel buttonBox) {
+		medianMutationValuesCB = 
+			new JCheckBox("Use median complex coloring (mutation)", manager.medianMutationValues());
+		medianMutationValuesCB.setToolTipText("Use the median for all edges for a each mutation in a complex");
+		medianMutationValuesCB.addItemListener(this);
+		medianMutationValuesCB.setActionCommand("medianMutationValues");
+		medianMutationValuesCB.setFont(smallFont);
+		buttonBox.add(Box.createRigidArea(new Dimension(10,0)));
+		buttonBox.add(medianMutationValuesCB);
 		buttonBox.add(Box.createHorizontalGlue());
 	}
 
@@ -473,18 +487,30 @@ public class ResultsPanel extends JPanel
 			manager.setIgnoreMultiples(selected);
 		} else if (command.equals("useComplexColoring")) {
 			manager.setUseComplexColoring(selected);
-			if (selected && manager.medianValues()) {
-				manager.setMedianValues(false);
-				medianValuesCB.setSelected(false);
+			if (selected) {
+				manager.setMedianResidueValues(false);
+				medianResidueValuesCB.setSelected(false);
+				manager.setMedianMutationValues(false);
+				medianMutationValuesCB.setSelected(false);
+			}
+		} else if (command.equals("medianMutationValues")) {
+			manager.setMedianMutationValues(selected);
+			if (selected) {
+				manager.setUseComplexColoring(false);
+				complexCB.setSelected(false);
+				manager.setMedianResidueValues(false);
+				medianResidueValuesCB.setSelected(false);
+			}
+		} else if (command.equals("medianResidueValues")) {
+			manager.setMedianResidueValues(selected);
+			if (selected) {
+				manager.setUseComplexColoring(false);
+				complexCB.setSelected(false);
+				manager.setMedianMutationValues(false);
+				medianMutationValuesCB.setSelected(false);
 			}
 		} else if (command.equals("selectEdges")) {
 			manager.setSelectEdges(selected);
-		} else if (command.equals("medianValues")) {
-			manager.setMedianValues(selected);
-			if (selected && manager.useComplexColoring()) {
-				manager.setUseComplexColoring(false);
-				complexCB.setSelected(false);
-			}
 		}
 	}
 

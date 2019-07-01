@@ -31,10 +31,11 @@ public class StructureUtils {
 
 	public static Map<Color, Set<String>> getComplexResiduesAndColors(StEMAPManager manager, 
 	                                                                  CyNetworkView view, List<CyNode> complex, 
-	                                                                  double scale) {
+	                                                                  double scale, boolean residueBased) {
 		Map<Color, Set<String>> colorMap = new HashMap<>();
 		CyNetwork net = view.getModel();
 		Map<String, List<Double>> weightMap = new HashMap<>();
+		Map<String, CyNode> mutationMap = new HashMap<>();
 		Color[] residueColorMap = manager.getResidueColorMap();
 		ColorScale cscale = new ColorScale(manager.getPositiveCutoff(), manager.getMaxWeight(), 
 		                                   residueColorMap[0], residueColorMap[0], residueColorMap[3], residueColorMap[0]);
@@ -54,17 +55,29 @@ public class StructureUtils {
 						continue;
 				}
 
-				List<String> residues = getResidue(manager, net, resNode);
-				for (String residue: residues) {
-					if (!weightMap.containsKey(residue)) {
-						weightMap.put(residue, new ArrayList<>());
+				if (residueBased) {
+					// Residue-based, so we want the median of *all* weights to a residue
+					List<String> residues = getResidue(manager, net, resNode);
+					for (String residue: residues) {
+						if (!weightMap.containsKey(residue)) {
+							weightMap.put(residue, new ArrayList<>());
+						}
+						weightMap.get(residue).add(weight);
 					}
-					weightMap.get(residue).add(weight);
+				} else {
+					// Mutation-based, so we want the median of all weights to a mutation
+					String mutation = getMutation(manager, net, resNode);
+					if (!weightMap.containsKey(mutation)) {
+						mutationMap.put(mutation, resNode);
+						weightMap.put(mutation, new ArrayList<>());
+					}
+					weightMap.get(mutation).add(weight);
 				}
 			}
 		}
 
 
+		Map<String, Double> medianMap = new HashMap<>();
 		for (String residue: weightMap.keySet()) {
 			List<Double> weights = weightMap.get(residue);
 
@@ -75,11 +88,40 @@ public class StructureUtils {
 			// System.out.println("Min weight = "+manager.getMinWeight());
 			if (median > manager.getPositiveCutoff() /* || median < manager.getNegativeCutoff() */) {
 				// System.out.println("Adding "+residue+" to colormap");
-				Color color = (Color) cscale.getPaint(median*scale);
-				if (!colorMap.containsKey(color))
-					colorMap.put(color, new HashSet<>());
-				colorMap.get(color).add(residue);
+				medianMap.put(residue, median);
 			}
+		}
+
+		System.out.println("medianMap: ");
+		for (String rOrM: medianMap.keySet()) {
+			System.out.println(rOrM+": "+medianMap.get(rOrM));
+		}
+
+		// Now, medianMap contains the median value for each residue or mutation.  Getting the colors
+		// from that map is slightly different.  For residues we're pretty much all set.  For mutations,
+		// we need to find the dominant mutation for a residue
+		if (!residueBased) {
+			// We're mutation-based, but now we need to find the maximum value for each
+			// residue
+			Map<String, Double> residueMap = new HashMap<>();
+			for (String mutation: medianMap.keySet()) {
+				List<String> residues = getResidue(manager, net, mutationMap.get(mutation));
+				for (String residue: residues) {
+					if (!residueMap.containsKey(residue)) {
+						residueMap.put(residue, medianMap.get(mutation));
+					} else if (residueMap.get(residue) < medianMap.get(mutation)) {
+						residueMap.put(residue, medianMap.get(mutation));
+					}
+				}
+			}
+			medianMap = residueMap;
+		}
+
+		for (String residue: medianMap.keySet()) {
+			Color color = (Color) cscale.getPaint(medianMap.get(residue)*scale);
+			if (!colorMap.containsKey(color))
+				colorMap.put(color, new HashSet<>());
+			colorMap.get(color).add(residue);
 		}
 		return colorMap;
 	}
@@ -161,6 +203,15 @@ public class StructureUtils {
 			return null;
 		String[] model = pdb.split("#");
 		return addChains(manager, model[1]);
+	}
+
+	public static String getMutation(StEMAPManager manager, CyNetwork net, CyNode node) {
+		// This will check to make sure we've got a residue node
+		String pdb = net.getRow(node).get(ModelUtils.RESIDUE_COLUMN, String.class);
+		if (pdb == null || pdb.length() == 0)
+			return null;
+		// Just return the actual name of the node
+		return ModelUtils.getName(net, node);
 	}
 
 	// FIXME: need to handle multiple residues here!!!!!

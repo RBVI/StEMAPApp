@@ -121,16 +121,18 @@ public class MutationStats {
 		return significantEdges;
 	}
 
-	public static Map<Color, Set<String>> getComplexResiduesAndColors(StEMAPManager manager, 
-	                                                                  CyNetworkView view, List<CyNode> complex, 
-																																		List<CyNode> filteredMutations,
-	                                                                  double scale) {
+	public static Map<Color, Set<String>> 
+					getComplexResiduesAndColors(StEMAPManager manager, 
+	                                    CyNetworkView view, List<CyNode> complex, 
+																			List<CyNode> filteredMutations,
+	                                    double scale) {
 		CyNetwork net = view.getModel();
 		// System.out.println("Getting significant edges");
 		List<CyEdge> edges = getSignificantPositions(net, complex);
 		// System.out.println("Found "+edges.size()+" significant edges");
 
-		// Now we need to choose the color range based on whether we have all epistatic, all suppresive, or a mix
+		// Now we need to choose the color range based on whether we have all epistatic, 
+		// all suppresive, or a mix
 		Map<String, List<Double>> valueMap = new HashMap<>();
 		Map<String, Integer> flagMap = new HashMap<>();
 
